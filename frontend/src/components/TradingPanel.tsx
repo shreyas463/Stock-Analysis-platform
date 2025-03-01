@@ -32,7 +32,7 @@ interface PortfolioPosition {
 }
 
 interface Transaction {
-  id: number;
+  id: string;
   symbol: string;
   shares: number;
   price: number;

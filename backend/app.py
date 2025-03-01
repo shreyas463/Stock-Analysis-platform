@@ -416,15 +416,35 @@ def create_discussion(current_user):
 @app.route('/api/market/top-gainers', methods=['GET'])
 def get_top_gainers():
     try:
-        # Mock data for top gainers
-        top_gainers = [
-            {"symbol": "AAPL", "price": 175.84, "change": 2.45},
-            {"symbol": "MSFT", "price": 328.79, "change": 1.98},
-            {"symbol": "GOOGL", "price": 138.21, "change": 1.76},
-            {"symbol": "AMZN", "price": 178.35, "change": 1.54},
-            {"symbol": "TSLA", "price": 202.64, "change": 1.32}
-        ]
-        return jsonify(top_gainers)
+        # Get market news from Finnhub to identify active stocks
+        market_news = finnhub_client.general_news('general', min_id=0)
+        mentioned_symbols = set()
+
+        # Extract unique stock symbols from news
+        for news in market_news:
+            if 'related' in news:
+                symbols = news['related'].split(',')
+                mentioned_symbols.update(symbols)
+
+        # Get quotes for mentioned symbols
+        gainers = []
+        for symbol in mentioned_symbols:
+            try:
+                quote = finnhub_client.quote(symbol)
+                # Only include stocks with positive price change
+                if quote and quote['dp'] and quote['dp'] > 0:
+                    gainers.append({
+                        'symbol': symbol,
+                        'price': quote['c'],
+                        'change': quote['dp']
+                    })
+            except Exception as e:
+                logger.error(f"Error fetching quote for {symbol}: {str(e)}")
+                continue
+
+        # Sort by percentage change (descending) and take top 5
+        gainers.sort(key=lambda x: x['change'], reverse=True)
+        return jsonify(gainers[:5])
     except Exception as e:
         logger.error(f"Error fetching top gainers: {str(e)}")
         return jsonify({'error': str(e)}), 400
@@ -437,58 +457,38 @@ def search_stocks():
         if not query or len(query) < 1:
             return jsonify({'result': []})
 
-        # Use mock data instead of Finnhub API
-        # Common stock symbols and companies
-        mock_stocks = [
-            {'symbol': 'AAPL', 'description': 'Apple Inc.', 'type': 'Common Stock'},
-            {'symbol': 'MSFT', 'description': 'Microsoft Corporation',
-                'type': 'Common Stock'},
-            {'symbol': 'GOOGL', 'description': 'Alphabet Inc.', 'type': 'Common Stock'},
-            {'symbol': 'AMZN', 'description': 'Amazon.com Inc.', 'type': 'Common Stock'},
-            {'symbol': 'META', 'description': 'Meta Platforms Inc.',
-                'type': 'Common Stock'},
-            {'symbol': 'TSLA', 'description': 'Tesla Inc.', 'type': 'Common Stock'},
-            {'symbol': 'NVDA', 'description': 'NVIDIA Corporation',
-                'type': 'Common Stock'},
-            {'symbol': 'JPM', 'description': 'JPMorgan Chase & Co.',
-                'type': 'Common Stock'},
-            {'symbol': 'BAC', 'description': 'Bank of America Corporation',
-                'type': 'Common Stock'},
-            {'symbol': 'WMT', 'description': 'Walmart Inc.', 'type': 'Common Stock'},
-            {'symbol': 'JNJ', 'description': 'Johnson & Johnson',
-                'type': 'Common Stock'},
-            {'symbol': 'PG', 'description': 'Procter & Gamble Co.',
-                'type': 'Common Stock'},
-            {'symbol': 'MA', 'description': 'Mastercard Incorporated',
-                'type': 'Common Stock'},
-            {'symbol': 'V', 'description': 'Visa Inc.', 'type': 'Common Stock'},
-            {'symbol': 'DIS', 'description': 'The Walt Disney Company',
-                'type': 'Common Stock'},
-            {'symbol': 'NFLX', 'description': 'Netflix Inc.', 'type': 'Common Stock'},
-            {'symbol': 'PYPL', 'description': 'PayPal Holdings Inc.',
-                'type': 'Common Stock'},
-            {'symbol': 'INTC', 'description': 'Intel Corporation',
-                'type': 'Common Stock'},
-            {'symbol': 'AMD', 'description': 'Advanced Micro Devices Inc.',
-                'type': 'Common Stock'},
-            {'symbol': 'CSCO', 'description': 'Cisco Systems Inc.',
-                'type': 'Common Stock'}
-        ]
+        # Search for stocks using Finnhub
+        search_results = finnhub_client.symbol_lookup(query)
 
-        # Filter stocks based on the query
-        filtered_stocks = []
-        query = query.upper()
-        for stock in mock_stocks:
-            if query in stock['symbol'] or query.lower() in stock['description'].lower():
-                filtered_stocks.append({
-                    'symbol': stock['symbol'],
-                    'description': stock['description'],
-                    'displaySymbol': stock['symbol'],
-                    'type': stock['type'],
-                    'name': stock['description']
-                })
+        if not search_results or 'result' not in search_results:
+            return jsonify({'result': []})
 
-        return jsonify({'result': filtered_stocks[:10]})  # Limit to 10 results
+        # Filter to US stocks only and limit to 10 results
+        filtered_results = []
+        for stock in search_results['result']:
+            if stock['type'] == 'Common Stock' and (stock['exchange'] == 'NYSE' or stock['exchange'] == 'NASDAQ'):
+                try:
+                    # Get current price and price change
+                    quote = finnhub_client.quote(stock['symbol'])
+                    if quote and 'c' in quote:
+                        filtered_results.append({
+                            'symbol': stock['symbol'],
+                            'description': stock['description'],
+                            'displaySymbol': stock['displaySymbol'],
+                            'type': stock['type'],
+                            'name': stock['description'],
+                            'price': quote['c'],
+                            'change': quote['dp']  # Percentage change
+                        })
+                except Exception as e:
+                    logger.error(
+                        f"Error fetching quote for {stock['symbol']}: {str(e)}")
+                    continue
+
+                if len(filtered_results) >= 10:
+                    break
+
+        return jsonify({'result': filtered_results})
     except Exception as e:
         logger.error(f"Error searching stocks: {str(e)}")
         return jsonify({'error': str(e), 'result': []}), 400
@@ -497,49 +497,39 @@ def search_stocks():
 @app.route('/api/stock/<symbol>', methods=['GET'])
 def get_stock(symbol):
     try:
-        # Use mock data instead of Finnhub API to avoid 403 errors
-        mock_quote = {
-            'c': 175.34,  # Current price
-            'h': 177.50,  # High price of the day
-            'l': 174.20,  # Low price of the day
-            'o': 175.00,  # Open price of the day
-            'pc': 174.50,  # Previous close price
-            'dp': 0.48,   # Percent change
-            'd': 0.84     # Change
-        }
+        # Get real-time quote from Finnhub
+        quote = finnhub_client.quote(symbol)
+        if not quote or 'c' not in quote:
+            return jsonify({'error': f'No quote data available for {symbol}'}), 404
 
-        # Mock company profile
-        mock_profile = {
-            'name': f"{symbol} Inc.",
-            'exchange': 'NASDAQ',
-            'ipo': '1980-12-12',
-            'marketCapitalization': 2800000,
-            'shareOutstanding': 16000,
-            'logo': f"https://logo.clearbit.com/{symbol.lower()}.com",
-            'weburl': f"https://{symbol.lower()}.com",
-            'finnhubIndustry': 'Technology'
-        }
+        # Get company profile from Finnhub
+        profile = finnhub_client.company_profile2(symbol=symbol)
+        if not profile:
+            profile = {
+                'name': f"{symbol}",
+                'exchange': 'Unknown',
+                'finnhubIndustry': 'Unknown'
+            }
 
-        # Generate mock historical data (30 days)
-        end_date = datetime.now()
+        # Get historical candle data (30 days)
+        end_date = int(datetime.now().timestamp())
+        start_date = int((datetime.now() - timedelta(days=30)).timestamp())
+        candles = finnhub_client.stock_candles(
+            symbol, 'D', start_date, end_date)
+
         historical = []
-        base_price = 170.0
-
-        for i in range(30):
-            date = end_date - timedelta(days=i)
-            # Generate a somewhat realistic price movement
-            price = base_price + (random.random() - 0.5) * 10
-            historical.append({
-                'date': date.strftime('%Y-%m-%d'),
-                'close': str(round(price, 2))
-            })
-
-        # Sort by date ascending
-        historical.sort(key=lambda x: x['date'])
+        if candles and candles['s'] == 'ok' and len(candles['t']) > 0:
+            for i in range(len(candles['t'])):
+                historical.append({
+                    'date': datetime.fromtimestamp(candles['t'][i]).strftime('%Y-%m-%d'),
+                    'close': str(candles['c'][i])
+                })
+        else:
+            return jsonify({'error': f'No historical data available for {symbol}'}), 404
 
         return jsonify({
-            'quote': mock_quote,
-            'profile': mock_profile,
+            'quote': quote,
+            'profile': profile,
             'historical': historical
         })
     except Exception as e:

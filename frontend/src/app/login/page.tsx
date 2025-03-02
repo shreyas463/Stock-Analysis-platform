@@ -448,30 +448,22 @@ export default function LoginPage() {
             sx={{
               display: { xs: 'none', md: 'block' },
               width: '100%',
-              maxWidth: '400px',
-              order: { md: 2 },
-              ml: { md: 'auto' },
-              position: 'absolute',
-              top: '80px',
-              right: '80px',
+              maxWidth: '450px',
+              position: 'fixed',
+              top: '40px',
+              right: '10px',
               bottom: '20px',
+              zIndex: 9999,
               overflowY: 'auto',
-              zIndex: 10,
+              height: 'calc(100vh - 60px)',
+              '& > div': {
+                height: '100%',
+                display: 'flex',
+                flexDirection: 'column'
+              }
             }}
           >
             <CryptoPriceWidget />
-            <Typography 
-              variant="body2" 
-              sx={{ 
-                mt: 2, 
-                textAlign: 'center', 
-                color: 'rgba(255, 255, 255, 0.7)',
-                fontStyle: 'italic'
-              }}
-            >
-              Stay updated with real-time cryptocurrency prices while you log in. 
-              Track the market even before you access your dashboard.
-            </Typography>
           </Box>
         </Box>
       </Container>

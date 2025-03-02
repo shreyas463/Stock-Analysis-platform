@@ -168,15 +168,4 @@ The application includes intelligent trading capabilities:
 
 ## 📜 License
 
-This project is licensed under the MIT License.
-
-## 📸 Screenshots
-
-### Dashboard
-![Dashboard](https://placeholder-for-screenshot.com/dashboard.png)
-
-### Trading Interface
-![Trading](https://placeholder-for-screenshot.com/trading.png)
-
-### Stock Analysis
-![Analysis](https://placeholder-for-screenshot.com/analysis.png)
+This project is licensed under the MIT License

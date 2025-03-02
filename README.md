@@ -2,23 +2,45 @@
 
 A full-stack web application that replicates core features of Robinhood, built with Next.js and Flask.
 
-## Features
+![Stockerr Dashboard](https://placeholder-for-screenshot.com/dashboard.png)
 
-- User authentication with Firebase
-- Stock data visualization (using mock data)
-- Stock trading simulation
-- Portfolio management
-- Transaction history
-- News feed for stocks
-- Discussion forum for stocks
+## 🚀 Features
 
-## Prerequisites
+- **Real-time Stock Data**: Live stock prices and market data
+- **Interactive Charts**: Visualize stock performance with customizable time ranges
+- **AI-Powered Analysis**: ARIMA model predictions for stock price forecasting
+- **Portfolio Management**: Track your investments and performance
+- **Trading Simulation**: Buy and sell stocks with virtual currency
+- **User Authentication**: Secure login with Firebase
+- **Responsive Design**: Optimized for desktop and mobile devices
+- **News Integration**: Latest stock-related news
+- **Discussion Forum**: Community discussions about stocks
+- **Top Gainers**: Track the best-performing stocks
+
+## 🛠️ Tech Stack
+
+### Frontend
+- **Next.js** - React framework
+- **Material UI** - Component library
+- **Chart.js** - Data visualization
+- **Firebase Auth** - User authentication
+- **TypeScript** - Type safety
+
+### Backend
+- **Flask** - Python web framework
+- **Firebase Firestore** - NoSQL database
+- **Finnhub API** - Stock market data
+- **ARIMA Model** - Time series forecasting
+- **JWT** - Token-based authentication
+
+## 📋 Prerequisites
 
 - Node.js (v14 or higher)
 - Python (v3.8 or higher)
 - Firebase account
+- Finnhub API key (free tier available)
 
-## Setup
+## 🔧 Setup
 
 ### Firebase Setup
 
@@ -54,8 +76,13 @@ A full-stack web application that replicates core features of Robinhood, built w
    ```
 
 5. Update the `.env` file with your API keys and Firebase configuration:
-   - Add your Firebase service account key path
-   - Set a secret key for JWT token generation
+   ```
+   FLASK_APP=app.py
+   FLASK_ENV=development
+   GOOGLE_APPLICATION_CREDENTIALS=serviceAccountKey.json
+   SECRET_KEY=your-secret-key-here
+   FINNHUB_API_KEY=your-finnhub-api-key
+   ```
 
 ### Frontend Setup
 
@@ -75,10 +102,17 @@ A full-stack web application that replicates core features of Robinhood, built w
    ```
 
 4. Update the `.env.local` file with your Firebase configuration:
-   - Add your Firebase Web API key
-   - Add your Firebase project configuration
+   ```
+   NEXT_PUBLIC_API_URL=http://localhost:5001
+   NEXT_PUBLIC_FIREBASE_API_KEY=your-api-key
+   NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN=your-project.firebaseapp.com
+   NEXT_PUBLIC_FIREBASE_PROJECT_ID=your-project-id
+   NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET=your-project.appspot.com
+   NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID=your-sender-id
+   NEXT_PUBLIC_FIREBASE_APP_ID=your-app-id
+   ```
 
-## Running the Application
+## 🚀 Running the Application
 
 1. Start the backend server:
    ```bash
@@ -95,42 +129,36 @@ A full-stack web application that replicates core features of Robinhood, built w
 
 3. Access the application at [http://localhost:3000](http://localhost:3000)
 
-## Implementation Notes
+## 🔄 Recent Updates
 
-### Mock Data
+### UI/UX Improvements
+- **Side-by-Side Layout**: Trading panel moved next to the chart for better usability
+- **Enhanced Search**: Improved search dropdown with better positioning
+- **Top Gainers Section**: Redesigned with fallback data to ensure content is always displayed
+- **Real-time Price Display**: Added live stock price updates when selecting stocks
 
-This application uses mock data for stock information, search, and news to avoid requiring paid API subscriptions. In a production environment, you would replace these with actual API calls to services like:
+### Backend Enhancements
+- **Quote Endpoint**: New API endpoint for fetching real-time stock prices
+- **ML Service**: Improved ARIMA model with fallback mechanisms for reliable predictions
+- **Error Handling**: Better error handling throughout the application
+- **API Integration**: Enhanced Finnhub API integration with fallback to mock data
 
-- [Finnhub](https://finnhub.io/) - For real-time stock data
-- [Alpha Vantage](https://www.alphavantage.co/) - For historical stock data
-- [News API](https://newsapi.org/) - For stock-related news
+### Technical Improvements
+- **Performance Optimization**: Reduced unnecessary API calls with debouncing
+- **Responsive Design**: Improved mobile experience
+- **Code Organization**: Better component structure and reusability
+- **Type Safety**: Enhanced TypeScript typing throughout the frontend
 
-### Authentication
+## 🧠 AI-Powered Features
 
-The application uses Firebase Authentication for user management. The backend verifies Firebase ID tokens for secure API access.
+The application includes machine learning capabilities:
 
-## Environment Variables
+- **ARIMA Model**: Time series forecasting for stock price prediction
+- **Buy/Sell Recommendations**: AI-powered suggestions based on price analysis
+- **Trend Analysis**: Identification of potential market trends
+- **Fallback Mechanisms**: Ensures predictions are available even when API data is limited
 
-### Backend (.env)
-```
-FLASK_APP=app.py
-FLASK_ENV=development
-GOOGLE_APPLICATION_CREDENTIALS=serviceAccountKey.json
-SECRET_KEY=your-secret-key-here
-```
-
-### Frontend (.env.local)
-```
-NEXT_PUBLIC_API_URL=http://localhost:5001
-NEXT_PUBLIC_FIREBASE_API_KEY=your-api-key
-NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN=your-project.firebaseapp.com
-NEXT_PUBLIC_FIREBASE_PROJECT_ID=your-project-id
-NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET=your-project.appspot.com
-NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID=your-sender-id
-NEXT_PUBLIC_FIREBASE_APP_ID=your-app-id
-```
-
-## Contributing
+## 🤝 Contributing
 
 1. Fork the repository
 2. Create a new branch for your feature
@@ -138,6 +166,17 @@ NEXT_PUBLIC_FIREBASE_APP_ID=your-app-id
 4. Push to the branch
 5. Create a new Pull Request
 
-## License
+## 📜 License
 
 This project is licensed under the MIT License.
+
+## 📸 Screenshots
+
+### Dashboard
+![Dashboard](https://placeholder-for-screenshot.com/dashboard.png)
+
+### Trading Interface
+![Trading](https://placeholder-for-screenshot.com/trading.png)
+
+### Stock Analysis
+![Analysis](https://placeholder-for-screenshot.com/analysis.png)

@@ -2,7 +2,7 @@
 
 A full-stack web application that replicates core features of Robinhood, built with Next.js and Flask.
 
-![Stockerr Dashboard](https://placeholder-for-screenshot.com/dashboard.png)
+
 
 ## 🚀 Features
 

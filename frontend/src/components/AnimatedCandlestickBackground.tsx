@@ -13,6 +13,17 @@ interface Candle {
   width: number;
 }
 
+interface Chart {
+  candles: Candle[];
+  speed: number;
+  y: number;
+  baseY: number; // Base Y position for oscillation
+  oscillationAmplitude: number; // How much the chart moves up and down
+  oscillationSpeed: number; // Speed of the oscillation
+  oscillationOffset: number; // Offset to make each chart oscillate differently
+  opacity: number;
+}
+
 const AnimatedCandlestickBackground: React.FC = () => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   
@@ -68,26 +79,25 @@ const AnimatedCandlestickBackground: React.FC = () => {
     };
     
     // Create multiple candlestick charts
-    const charts: {
-      candles: Candle[];
-      speed: number;
-      y: number;
-      opacity: number;
-    }[] = [];
+    const charts: Chart[] = [];
     
-    // Create 5 different candlestick charts (increased from 3)
+    // Create 5 different candlestick charts
     for (let i = 0; i < 5; i++) {
-      const candleCount = Math.floor(canvas.width / 15); // More candles per chart (changed from 20)
-      const volatilityFactor = 0.8 + Math.random() * 0.4; // Different volatility for each chart
+      const candleCount = Math.floor(canvas.width / 15);
+      const volatilityFactor = 0.8 + Math.random() * 0.4;
       
       // Distribute charts more evenly across the screen
       const yPosition = (canvas.height / 6) * (i + 1);
       
       charts.push({
         candles: generateCandles(candleCount, volatilityFactor),
-        speed: 0.15 + Math.random() * 0.3, // Varied speeds
+        speed: 0.15 + Math.random() * 0.3, // Horizontal speed
         y: yPosition,
-        opacity: 0.15 + (i * 0.08) // Varied opacity
+        baseY: yPosition, // Store the base Y position
+        oscillationAmplitude: 10 + Math.random() * 20, // Random amplitude between 10-30px
+        oscillationSpeed: 0.0005 + Math.random() * 0.001, // Random speed
+        oscillationOffset: Math.random() * Math.PI * 2, // Random offset (0 to 2π)
+        opacity: 0.15 + (i * 0.08)
       });
     }
     
@@ -97,6 +107,10 @@ const AnimatedCandlestickBackground: React.FC = () => {
       candles: generateCandles(Math.floor(canvas.width / 25), 1.5),
       speed: 0.1 + Math.random() * 0.2,
       y: canvas.height * 0.15,
+      baseY: canvas.height * 0.15,
+      oscillationAmplitude: 15 + Math.random() * 25,
+      oscillationSpeed: 0.0003 + Math.random() * 0.0007,
+      oscillationOffset: Math.random() * Math.PI * 2,
       opacity: 0.2
     });
     
@@ -105,18 +119,45 @@ const AnimatedCandlestickBackground: React.FC = () => {
       candles: generateCandles(Math.floor(canvas.width / 25), 1.5),
       speed: 0.1 + Math.random() * 0.2,
       y: canvas.height * 0.85,
+      baseY: canvas.height * 0.85,
+      oscillationAmplitude: 15 + Math.random() * 25,
+      oscillationSpeed: 0.0003 + Math.random() * 0.0007,
+      oscillationOffset: Math.random() * Math.PI * 2,
       opacity: 0.2
     });
     
     // Animation variables
     let animationFrameId: number;
     let lastTimestamp = 0;
+    let elapsedTime = 0;
+    
+    // Function to update candle prices (subtle movements)
+    const updateCandlePrices = (candles: Candle[], deltaTime: number) => {
+      const priceChangeSpeed = 0.00005;
+      const maxPriceChange = 2;
+      
+      candles.forEach(candle => {
+        // Small random price movements
+        const priceChange = (Math.random() * 2 - 1) * maxPriceChange * priceChangeSpeed * deltaTime;
+        
+        candle.open += priceChange;
+        candle.close += priceChange;
+        candle.high += priceChange;
+        candle.low += priceChange;
+        
+        // Update color based on new open/close relationship
+        candle.color = candle.close > candle.open 
+          ? 'rgba(105, 240, 174, 0.7)' 
+          : 'rgba(255, 82, 82, 0.7)';
+      });
+    };
     
     // Animation function
     const animate = (timestamp: number) => {
       if (!lastTimestamp) lastTimestamp = timestamp;
       const deltaTime = timestamp - lastTimestamp;
       lastTimestamp = timestamp;
+      elapsedTime += deltaTime;
       
       // Clear canvas
       ctx.clearRect(0, 0, canvas.width, canvas.height);
@@ -125,10 +166,16 @@ const AnimatedCandlestickBackground: React.FC = () => {
       charts.forEach(chart => {
         if (!chart || !chart.candles) return;
         
+        // Update vertical position with oscillation
+        chart.y = chart.baseY + Math.sin(elapsedTime * chart.oscillationSpeed + chart.oscillationOffset) * chart.oscillationAmplitude;
+        
         // Move candles to the left
         chart.candles.forEach(candle => {
           if (candle) candle.x -= chart.speed * deltaTime * 0.02;
         });
+        
+        // Update candle prices for subtle movements
+        updateCandlePrices(chart.candles, deltaTime);
         
         // Remove candles that are off-screen
         while (chart.candles.length > 0 && chart.candles[0] && chart.candles[0].x + chart.candles[0].width < 0) {
@@ -169,7 +216,7 @@ const AnimatedCandlestickBackground: React.FC = () => {
           ctx.moveTo(candle.x + candle.width / 2, chart.y - (baseY - candle.high));
           ctx.lineTo(candle.x + candle.width / 2, chart.y - (baseY - candle.low));
           ctx.strokeStyle = candle.color;
-          ctx.lineWidth = 2; // Increased line width for better visibility
+          ctx.lineWidth = 2;
           ctx.stroke();
           
           // Draw the body (rectangle)
@@ -218,7 +265,7 @@ const AnimatedCandlestickBackground: React.FC = () => {
         width: '100%',
         height: '100%',
         zIndex: 0,
-        opacity: 0.5, // Increased opacity from 0.3 to 0.5 for better visibility
+        opacity: 0.5,
       }}
     >
       <canvas

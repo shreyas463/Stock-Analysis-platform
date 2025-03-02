@@ -18,9 +18,14 @@ interface Chart {
   speed: number;
   y: number;
   baseY: number; // Base Y position for oscillation
-  oscillationAmplitude: number; // How much the chart moves up and down
-  oscillationSpeed: number; // Speed of the oscillation
-  oscillationOffset: number; // Offset to make each chart oscillate differently
+  x: number; // Horizontal position offset
+  baseX: number; // Base X position for oscillation
+  oscillationAmplitudeY: number; // How much the chart moves up and down
+  oscillationSpeedY: number; // Speed of the vertical oscillation
+  oscillationOffsetY: number; // Offset to make each chart oscillate differently vertically
+  oscillationAmplitudeX: number; // How much the chart moves left and right
+  oscillationSpeedX: number; // Speed of the horizontal oscillation
+  oscillationOffsetX: number; // Offset to make each chart oscillate differently horizontally
   opacity: number;
 }
 
@@ -94,9 +99,14 @@ const AnimatedCandlestickBackground: React.FC = () => {
         speed: 0.15 + Math.random() * 0.3, // Horizontal speed
         y: yPosition,
         baseY: yPosition, // Store the base Y position
-        oscillationAmplitude: 10 + Math.random() * 20, // Random amplitude between 10-30px
-        oscillationSpeed: 0.0005 + Math.random() * 0.001, // Random speed
-        oscillationOffset: Math.random() * Math.PI * 2, // Random offset (0 to 2π)
+        x: 0,
+        baseX: 0,
+        oscillationAmplitudeY: 10 + Math.random() * 20, // Random amplitude between 10-30px
+        oscillationSpeedY: 0.0005 + Math.random() * 0.001, // Random speed
+        oscillationOffsetY: Math.random() * Math.PI * 2, // Random offset (0 to 2π)
+        oscillationAmplitudeX: 5 + Math.random() * 15, // Random horizontal amplitude between 5-20px
+        oscillationSpeedX: 0.0003 + Math.random() * 0.0008, // Random horizontal speed
+        oscillationOffsetX: Math.random() * Math.PI * 2, // Random horizontal offset
         opacity: 0.15 + (i * 0.08)
       });
     }
@@ -108,9 +118,14 @@ const AnimatedCandlestickBackground: React.FC = () => {
       speed: 0.1 + Math.random() * 0.2,
       y: canvas.height * 0.15,
       baseY: canvas.height * 0.15,
-      oscillationAmplitude: 15 + Math.random() * 25,
-      oscillationSpeed: 0.0003 + Math.random() * 0.0007,
-      oscillationOffset: Math.random() * Math.PI * 2,
+      x: 0,
+      baseX: 0,
+      oscillationAmplitudeY: 15 + Math.random() * 25,
+      oscillationSpeedY: 0.0003 + Math.random() * 0.0007,
+      oscillationOffsetY: Math.random() * Math.PI * 2,
+      oscillationAmplitudeX: 8 + Math.random() * 12,
+      oscillationSpeedX: 0.0002 + Math.random() * 0.0006,
+      oscillationOffsetX: Math.random() * Math.PI * 2,
       opacity: 0.2
     });
     
@@ -120,9 +135,14 @@ const AnimatedCandlestickBackground: React.FC = () => {
       speed: 0.1 + Math.random() * 0.2,
       y: canvas.height * 0.85,
       baseY: canvas.height * 0.85,
-      oscillationAmplitude: 15 + Math.random() * 25,
-      oscillationSpeed: 0.0003 + Math.random() * 0.0007,
-      oscillationOffset: Math.random() * Math.PI * 2,
+      x: 0,
+      baseX: 0,
+      oscillationAmplitudeY: 15 + Math.random() * 25,
+      oscillationSpeedY: 0.0003 + Math.random() * 0.0007,
+      oscillationOffsetY: Math.random() * Math.PI * 2,
+      oscillationAmplitudeX: 8 + Math.random() * 12,
+      oscillationSpeedX: 0.0002 + Math.random() * 0.0006,
+      oscillationOffsetX: Math.random() * Math.PI * 2,
       opacity: 0.2
     });
     
@@ -167,9 +187,12 @@ const AnimatedCandlestickBackground: React.FC = () => {
         if (!chart || !chart.candles) return;
         
         // Update vertical position with oscillation
-        chart.y = chart.baseY + Math.sin(elapsedTime * chart.oscillationSpeed + chart.oscillationOffset) * chart.oscillationAmplitude;
+        chart.y = chart.baseY + Math.sin(elapsedTime * chart.oscillationSpeedY + chart.oscillationOffsetY) * chart.oscillationAmplitudeY;
         
-        // Move candles to the left
+        // Update horizontal position with oscillation
+        chart.x = chart.baseX + Math.sin(elapsedTime * chart.oscillationSpeedX + chart.oscillationOffsetX) * chart.oscillationAmplitudeX;
+        
+        // Move candles to the left (constant movement)
         chart.candles.forEach(candle => {
           if (candle) candle.x -= chart.speed * deltaTime * 0.02;
         });
@@ -211,10 +234,13 @@ const AnimatedCandlestickBackground: React.FC = () => {
         chart.candles.forEach(candle => {
           if (!candle) return;
           
+          // Apply the chart's horizontal oscillation to each candle's position
+          const adjustedX = candle.x + chart.x;
+          
           // Draw the wick (vertical line)
           ctx.beginPath();
-          ctx.moveTo(candle.x + candle.width / 2, chart.y - (baseY - candle.high));
-          ctx.lineTo(candle.x + candle.width / 2, chart.y - (baseY - candle.low));
+          ctx.moveTo(adjustedX + candle.width / 2, chart.y - (baseY - candle.high));
+          ctx.lineTo(adjustedX + candle.width / 2, chart.y - (baseY - candle.low));
           ctx.strokeStyle = candle.color;
           ctx.lineWidth = 2;
           ctx.stroke();
@@ -227,7 +253,7 @@ const AnimatedCandlestickBackground: React.FC = () => {
           
           ctx.fillStyle = candle.color;
           ctx.fillRect(
-            candle.x, 
+            adjustedX, 
             bodyY, 
             candle.width, 
             Math.max(bodyHeight, 1) // Ensure body has at least 1px height

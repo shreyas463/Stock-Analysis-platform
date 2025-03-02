@@ -6,9 +6,9 @@ A full-stack web application that replicates core features of Robinhood, built w
 
 ## 🚀 Features
 
-- **Real-time Stock Data**: Live stock prices and market data
+- **Real-time Stock Data**: Live stock prices and market data via Finnhub API
 - **Interactive Charts**: Visualize stock performance with customizable time ranges
-- **AI-Powered Analysis**: ARIMA model predictions for stock price forecasting
+- **Smart Trading Insights**: Data-driven recommendations for stock trading
 - **Portfolio Management**: Track your investments and performance
 - **Trading Simulation**: Buy and sell stocks with virtual currency
 - **User Authentication**: Secure login with Firebase
@@ -30,7 +30,7 @@ A full-stack web application that replicates core features of Robinhood, built w
 - **Flask** - Python web framework
 - **Firebase Firestore** - NoSQL database
 - **Finnhub API** - Stock market data
-- **ARIMA Model** - Time series forecasting
+- **Statistical Analysis** - Time series forecasting
 - **JWT** - Token-based authentication
 
 ## 📋 Prerequisites
@@ -139,9 +139,9 @@ A full-stack web application that replicates core features of Robinhood, built w
 
 ### Backend Enhancements
 - **Quote Endpoint**: New API endpoint for fetching real-time stock prices
-- **ML Service**: Improved ARIMA model with fallback mechanisms for reliable predictions
+- **Intelligent Analysis**: Improved statistical analysis with fallback mechanisms for reliable predictions
 - **Error Handling**: Better error handling throughout the application
-- **API Integration**: Enhanced Finnhub API integration with fallback to mock data
+- **API Integration**: Enhanced Finnhub API integration with graceful degradation
 
 ### Technical Improvements
 - **Performance Optimization**: Reduced unnecessary API calls with debouncing
@@ -149,12 +149,12 @@ A full-stack web application that replicates core features of Robinhood, built w
 - **Code Organization**: Better component structure and reusability
 - **Type Safety**: Enhanced TypeScript typing throughout the frontend
 
-## 🧠 AI-Powered Features
+## 🧠 Smart Trading Features
 
-The application includes machine learning capabilities:
+The application includes intelligent trading capabilities:
 
-- **ARIMA Model**: Time series forecasting for stock price prediction
-- **Buy/Sell Recommendations**: AI-powered suggestions based on price analysis
+- **Price Forecasting**: Statistical analysis for stock price prediction
+- **Buy/Sell Recommendations**: Data-driven suggestions based on price analysis
 - **Trend Analysis**: Identification of potential market trends
 - **Fallback Mechanisms**: Ensures predictions are available even when API data is limited
 

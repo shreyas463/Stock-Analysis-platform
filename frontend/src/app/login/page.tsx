@@ -448,14 +448,15 @@ export default function LoginPage() {
             sx={{
               display: { xs: 'none', md: 'block' },
               width: '100%',
-              maxWidth: '350px',
+              maxWidth: '400px',
               order: { md: 2 },
               ml: { md: 'auto' },
               position: 'absolute',
               top: '80px',
-              right: '20px',
+              right: '80px',
               bottom: '20px',
               overflowY: 'auto',
+              zIndex: 10,
             }}
           >
             <CryptoPriceWidget />

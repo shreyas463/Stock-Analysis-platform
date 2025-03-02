@@ -19,6 +19,7 @@ import {
   Paper
 } from '@mui/material';
 import { Visibility, VisibilityOff } from '@mui/icons-material';
+import AnimatedCandlestickBackground from '@/components/AnimatedCandlestickBackground';
 
 export default function LoginPage() {
   const [isLogin, setIsLogin] = useState(true);
@@ -107,6 +108,9 @@ export default function LoginPage() {
         overflow: 'hidden',
       }}
     >
+      {/* Add the animated candlestick chart background */}
+      <AnimatedCandlestickBackground />
+      
       {/* Animated particles background */}
       <Box
         sx={{
@@ -267,25 +271,25 @@ export default function LoginPage() {
                 autoComplete="username"
                 value={username}
                 onChange={(e) => setUsername(e.target.value)}
-                disabled={loading}
                 sx={{
                   mb: 2,
                   '& .MuiOutlinedInput-root': {
+                    color: 'white',
                     '& fieldset': {
-                      borderColor: 'rgba(255, 255, 255, 0.23)',
+                      borderColor: 'rgba(255, 255, 255, 0.1)',
                     },
                     '&:hover fieldset': {
-                      borderColor: 'rgba(255, 255, 255, 0.5)',
+                      borderColor: 'rgba(255, 255, 255, 0.2)',
                     },
                     '&.Mui-focused fieldset': {
                       borderColor: '#69f0ae',
                     },
                   },
                   '& .MuiInputLabel-root': {
-                    color: 'rgba(255, 255, 255, 0.7)',
+                    color: '#9e9e9e',
                   },
-                  '& .MuiInputBase-input': {
-                    color: 'white',
+                  '& .MuiInputLabel-root.Mui-focused': {
+                    color: '#69f0ae',
                   },
                 }}
               />
@@ -300,25 +304,25 @@ export default function LoginPage() {
               autoComplete="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              disabled={loading}
               sx={{
                 mb: 2,
                 '& .MuiOutlinedInput-root': {
+                  color: 'white',
                   '& fieldset': {
-                    borderColor: 'rgba(255, 255, 255, 0.23)',
+                    borderColor: 'rgba(255, 255, 255, 0.1)',
                   },
                   '&:hover fieldset': {
-                    borderColor: 'rgba(255, 255, 255, 0.5)',
+                    borderColor: 'rgba(255, 255, 255, 0.2)',
                   },
                   '&.Mui-focused fieldset': {
                     borderColor: '#69f0ae',
                   },
                 },
                 '& .MuiInputLabel-root': {
-                  color: 'rgba(255, 255, 255, 0.7)',
+                  color: '#9e9e9e',
                 },
-                '& .MuiInputBase-input': {
-                  color: 'white',
+                '& .MuiInputLabel-root.Mui-focused': {
+                  color: '#69f0ae',
                 },
               }}
             />
@@ -333,7 +337,6 @@ export default function LoginPage() {
               autoComplete={isLogin ? 'current-password' : 'new-password'}
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              disabled={loading}
               InputProps={{
                 endAdornment: (
                   <InputAdornment position="end">
@@ -341,7 +344,7 @@ export default function LoginPage() {
                       aria-label="toggle password visibility"
                       onClick={() => setShowPassword(!showPassword)}
                       edge="end"
-                      sx={{ color: 'rgba(255, 255, 255, 0.7)' }}
+                      sx={{ color: '#9e9e9e' }}
                     >
                       {showPassword ? <VisibilityOff /> : <Visibility />}
                     </IconButton>
@@ -351,21 +354,22 @@ export default function LoginPage() {
               sx={{
                 mb: 2,
                 '& .MuiOutlinedInput-root': {
+                  color: 'white',
                   '& fieldset': {
-                    borderColor: 'rgba(255, 255, 255, 0.23)',
+                    borderColor: 'rgba(255, 255, 255, 0.1)',
                   },
                   '&:hover fieldset': {
-                    borderColor: 'rgba(255, 255, 255, 0.5)',
+                    borderColor: 'rgba(255, 255, 255, 0.2)',
                   },
                   '&.Mui-focused fieldset': {
                     borderColor: '#69f0ae',
                   },
                 },
                 '& .MuiInputLabel-root': {
-                  color: 'rgba(255, 255, 255, 0.7)',
+                  color: '#9e9e9e',
                 },
-                '& .MuiInputBase-input': {
-                  color: 'white',
+                '& .MuiInputLabel-root.Mui-focused': {
+                  color: '#69f0ae',
                 },
               }}
             />
@@ -377,7 +381,7 @@ export default function LoginPage() {
                   checked={rememberMe}
                   onChange={(e) => setRememberMe(e.target.checked)}
                   sx={{
-                    color: 'rgba(255, 255, 255, 0.7)',
+                    color: '#9e9e9e',
                     '&.Mui-checked': {
                       color: '#69f0ae',
                     },
@@ -385,8 +389,8 @@ export default function LoginPage() {
                 />
               }
               label="Remember me"
-              sx={{
-                color: 'rgba(255, 255, 255, 0.7)',
+              sx={{ 
+                color: '#9e9e9e',
                 mb: 2,
               }}
             />
@@ -396,60 +400,42 @@ export default function LoginPage() {
               variant="contained"
               disabled={loading}
               sx={{
-                mt: 3,
-                mb: 2,
+                mt: 2,
+                mb: 3,
                 py: 1.5,
                 bgcolor: '#69f0ae',
                 color: '#1a1f2c',
                 fontWeight: 600,
-                fontSize: '1rem',
-                textTransform: 'none',
-                borderRadius: 2,
-                position: 'relative',
-                overflow: 'hidden',
-                transition: 'all 0.3s ease',
                 '&:hover': {
                   bgcolor: '#4caf50',
-                  transform: 'translateY(-2px)',
-                  boxShadow: '0 6px 20px rgba(105, 240, 174, 0.2)',
                 },
-                '&:active': {
-                  transform: 'translateY(0)',
+                '&.Mui-disabled': {
+                  bgcolor: 'rgba(105, 240, 174, 0.3)',
                 },
-                '&::before': {
+                borderRadius: 2,
+                boxShadow: '0 4px 10px rgba(105, 240, 174, 0.3)',
+                position: 'relative',
+                overflow: 'hidden',
+                '&::after': {
                   content: '""',
                   position: 'absolute',
                   top: 0,
                   left: '-100%',
-                  width: '100%',
+                  width: '200%',
                   height: '100%',
                   background: 'linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent)',
-                  animation: loading ? 'shimmer 1.5s infinite' : 'none',
+                  animation: 'shimmer 2s infinite',
+                  opacity: 0.5,
                 },
               }}
             >
               {loading ? (
-                <CircularProgress
-                  size={24}
-                  sx={{
-                    color: '#1a1f2c',
-                  }}
-                />
+                <CircularProgress size={24} sx={{ color: '#1a1f2c' }} />
               ) : (
-                isLogin ? 'Sign In' : 'Create Account'
+                isLogin ? 'Sign In' : 'Sign Up'
               )}
             </Button>
-
-            <Box sx={{ 
-              mt: 2, 
-              display: 'flex', 
-              justifyContent: 'center',
-              alignItems: 'center',
-              gap: 0.5,
-            }}>
-              <Typography variant="body2" sx={{ color: 'rgba(255, 255, 255, 0.7)' }}>
-                {isLogin ? "Don't have an account?" : "Already have an account?"}
-              </Typography>
+            <Box sx={{ textAlign: 'center' }}>
               <Link
                 component="button"
                 variant="body2"
@@ -460,15 +446,12 @@ export default function LoginPage() {
                 sx={{
                   color: '#69f0ae',
                   textDecoration: 'none',
-                  fontWeight: 500,
-                  transition: 'all 0.2s ease',
                   '&:hover': {
-                    color: '#4caf50',
-                    textDecoration: 'none',
+                    textDecoration: 'underline',
                   },
                 }}
               >
-                {isLogin ? 'Sign Up' : 'Sign In'}
+                {isLogin ? "Don't have an account? Sign Up" : "Already have an account? Sign In"}
               </Link>
             </Box>
           </Box>

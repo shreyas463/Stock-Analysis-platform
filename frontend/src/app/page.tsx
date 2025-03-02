@@ -4,6 +4,7 @@ import React, { useState, useEffect } from 'react';
 import { Box, Container, Typography, Paper, Button, CircularProgress } from '@mui/material';
 import SearchBar from '../components/SearchBar';
 import StockChart from '../components/StockChart';
+import CandlestickChart from '../components/CandlestickChart';
 import NewsSection from '../components/NewsSection';
 import TradingPanel from '../components/TradingPanel';
 import TopGainers from '../components/TopGainers';
@@ -164,9 +165,9 @@ export default function Home() {
                           mb: 3
                         }}
                       >
-                        {selectedStock} Stock Chart
+                        {selectedStock} Candlestick Chart
                       </Typography>
-                      <StockChart symbol={selectedStock} />
+                      <CandlestickChart symbol={selectedStock} />
                     </Paper>
                     <Paper 
                       elevation={3} 

@@ -36,7 +36,7 @@ const AnimatedCandlestickBackground: React.FC = () => {
     const baseY = canvas.height / 2;
     
     // Generate candlestick data
-    const generateCandles = (count: number): Candle[] => {
+    const generateCandles = (count: number, volatilityFactor: number = 1): Candle[] => {
       const candles: Candle[] = [];
       const candleWidth = Math.max(canvas.width / (count * 2), 4); // Ensure candles aren't too thin
       const spacing = candleWidth * 1.5;
@@ -46,7 +46,7 @@ const AnimatedCandlestickBackground: React.FC = () => {
       
       for (let i = 0; i < count; i++) {
         const open = lastClose;
-        const volatility = amplitude * 0.3;
+        const volatility = amplitude * 0.3 * volatilityFactor;
         const close = open + (Math.random() * volatility * 2 - volatility);
         const high = Math.max(open, close) + Math.random() * volatility * 0.5;
         const low = Math.min(open, close) - Math.random() * volatility * 0.5;
@@ -75,16 +75,38 @@ const AnimatedCandlestickBackground: React.FC = () => {
       opacity: number;
     }[] = [];
     
-    // Create 3 different candlestick charts
-    for (let i = 0; i < 3; i++) {
-      const candleCount = Math.floor(canvas.width / 20); // Number of candles based on screen width
+    // Create 5 different candlestick charts (increased from 3)
+    for (let i = 0; i < 5; i++) {
+      const candleCount = Math.floor(canvas.width / 15); // More candles per chart (changed from 20)
+      const volatilityFactor = 0.8 + Math.random() * 0.4; // Different volatility for each chart
+      
+      // Distribute charts more evenly across the screen
+      const yPosition = (canvas.height / 6) * (i + 1);
+      
       charts.push({
-        candles: generateCandles(candleCount),
-        speed: 0.2 + Math.random() * 0.3, // Slow speed for subtle movement
-        y: (canvas.height / 4) * (i + 1), // Distribute charts vertically
-        opacity: 0.2 + (i * 0.1) // Increased opacity for better visibility
+        candles: generateCandles(candleCount, volatilityFactor),
+        speed: 0.15 + Math.random() * 0.3, // Varied speeds
+        y: yPosition,
+        opacity: 0.15 + (i * 0.08) // Varied opacity
       });
     }
+    
+    // Add 2 more charts with different patterns
+    // One near the top
+    charts.push({
+      candles: generateCandles(Math.floor(canvas.width / 25), 1.5),
+      speed: 0.1 + Math.random() * 0.2,
+      y: canvas.height * 0.15,
+      opacity: 0.2
+    });
+    
+    // One near the bottom
+    charts.push({
+      candles: generateCandles(Math.floor(canvas.width / 25), 1.5),
+      speed: 0.1 + Math.random() * 0.2,
+      y: canvas.height * 0.85,
+      opacity: 0.2
+    });
     
     // Animation variables
     let animationFrameId: number;

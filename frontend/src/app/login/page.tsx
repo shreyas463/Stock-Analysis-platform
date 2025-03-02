@@ -20,6 +20,7 @@ import {
 } from '@mui/material';
 import { Visibility, VisibilityOff } from '@mui/icons-material';
 import AnimatedCandlestickBackground from '@/components/AnimatedCandlestickBackground';
+import StockerrLogo from '@/components/StockerrLogo';
 
 export default function LoginPage() {
   const [isLogin, setIsLogin] = useState(true);
@@ -211,6 +212,9 @@ export default function LoginPage() {
             },
           }}
         >
+          {/* Add the Stockerr Logo */}
+          <StockerrLogo size={90} />
+          
           <Typography
             component="h1"
             variant="h4"

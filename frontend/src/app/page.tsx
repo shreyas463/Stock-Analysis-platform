@@ -3,12 +3,12 @@
 import React, { useState, useEffect } from 'react';
 import { Box, Container, Typography, Paper, Button, CircularProgress } from '@mui/material';
 import SearchBar from '../components/SearchBar';
-import StockChart from '../components/StockChart';
-import CandlestickChart from '../components/CandlestickChart';
+import StockChart from '@/components/StockChart';
 import NewsSection from '../components/NewsSection';
 import TradingPanel from '../components/TradingPanel';
 import TopGainers from '../components/TopGainers';
 import Discussion from '@/components/Discussion';
+import StockerrLogo from '@/components/StockerrLogo';
 import { useAuth } from '@/contexts/AuthContext';
 import { useRouter } from 'next/navigation';
 
@@ -88,10 +88,14 @@ export default function Home() {
               sx={{ 
                 color: '#69f0ae', 
                 fontWeight: 'bold',
-                letterSpacing: '-0.5px'
+                letterSpacing: '-0.5px',
+                textShadow: '0 2px 4px rgba(0,0,0,0.3)',
+                background: 'linear-gradient(45deg, #69f0ae, #00bcd4)',
+                WebkitBackgroundClip: 'text',
+                WebkitTextFillColor: 'transparent'
               }}
             >
-              Stockerr Dashboard
+              Dashboard
             </Typography>
             <Box sx={{ display: 'flex', gap: 2 }}>
               <Button
@@ -165,9 +169,9 @@ export default function Home() {
                           mb: 3
                         }}
                       >
-                        {selectedStock} Candlestick Chart
+                        {selectedStock} Stock Chart
                       </Typography>
-                      <CandlestickChart symbol={selectedStock} />
+                      <StockChart symbol={selectedStock} />
                     </Paper>
                     <Paper 
                       elevation={3} 
@@ -214,17 +218,33 @@ export default function Home() {
                 )}
               </Box>
 
-              <Box sx={{ flex: '1 1 300px', minWidth: 0 }}>
+              <Box sx={{ flex: '1 1 350px', display: 'flex', flexDirection: 'column', gap: 4, minWidth: 0 }}>
                 <Paper 
                   elevation={3} 
                   sx={{ 
                     p: 4, 
-                    mb: 4, 
                     borderRadius: 2, 
                     bgcolor: '#2A2D3E',
                     border: '1px solid',
                     borderColor: 'rgba(255, 255, 255, 0.1)',
                     boxShadow: '0 4px 6px rgba(0, 0, 0, 0.1)'
+                  }}
+                >
+                  <TopGainers />
+                </Paper>
+                
+                <Paper 
+                  elevation={3} 
+                  sx={{ 
+                    p: 4, 
+                    borderRadius: 2, 
+                    bgcolor: '#2A2D3E',
+                    border: '1px solid',
+                    borderColor: 'rgba(255, 255, 255, 0.1)',
+                    boxShadow: '0 4px 6px rgba(0, 0, 0, 0.1)',
+                    flex: 1,
+                    display: 'flex',
+                    flexDirection: 'column'
                   }}
                 >
                   <Typography 
@@ -236,26 +256,14 @@ export default function Home() {
                       mb: 3
                     }}
                   >
-                    Top Gainers
+                    Trade Stocks
                   </Typography>
-                  <TopGainers />
+                  <Box sx={{ flex: 1 }}>
+                    <TradingPanel selectedStockFromParent={selectedStock} />
+                  </Box>
                 </Paper>
               </Box>
             </Box>
-
-            <Paper 
-              elevation={3} 
-              sx={{ 
-                p: 4, 
-                borderRadius: 2, 
-                bgcolor: '#2A2D3E',
-                border: '1px solid',
-                borderColor: 'rgba(255, 255, 255, 0.1)',
-                boxShadow: '0 4px 6px rgba(0, 0, 0, 0.1)'
-              }}
-            >
-              <TradingPanel />
-            </Paper>
           </>
         ) : (
           <Paper 

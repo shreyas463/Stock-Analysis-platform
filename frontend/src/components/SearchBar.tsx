@@ -86,7 +86,7 @@ export default function SearchBar({ onStockSelect }: SearchBarProps) {
   };
 
   return (
-    <Box sx={{ position: 'relative' }}>
+    <Box sx={{ position: 'relative', zIndex: 1100 }}>
       <TextField
         fullWidth
         placeholder="Search stocks..."
@@ -132,119 +132,67 @@ export default function SearchBar({ onStockSelect }: SearchBarProps) {
           }
         }}
       />
-      {searchResults.length > 0 && searchQuery && (
-        <Paper 
-          sx={{ 
-            position: 'absolute', 
-            top: '100%', 
-            left: 0, 
-            right: 0, 
-            mt: 1, 
-            maxHeight: 400, 
-            overflow: 'auto',
-            bgcolor: '#2A2D3E',
-            borderRadius: '12px',
-            border: '2px solid',
-            borderColor: 'rgba(255, 255, 255, 0.1)',
-            boxShadow: '0 8px 16px rgba(0, 0, 0, 0.2)',
-            zIndex: 1000,
-            '&::-webkit-scrollbar': {
-              width: '8px',
-            },
-            '&::-webkit-scrollbar-track': {
-              background: '#1E2132',
-              borderRadius: '4px',
-            },
-            '&::-webkit-scrollbar-thumb': {
-              background: '#4A4D5E',
-              borderRadius: '4px',
-              '&:hover': {
-                background: '#5A5D6E',
-              },
-            },
-          }}
-        >
-          <List>
-            {searchResults.map((result) => (
-              <ListItem 
-                key={result.symbol}
-                onClick={() => handleSelect(result.symbol)}
-                sx={{
-                  py: 2,
-                  px: 3,
-                  cursor: 'pointer',
-                  transition: 'all 0.2s ease-in-out',
-                  '&:hover': {
-                    bgcolor: 'rgba(105, 240, 174, 0.1)',
-                    transform: 'translateX(4px)'
-                  },
-                  borderBottom: '1px solid rgba(255, 255, 255, 0.05)',
-                  '&:last-child': {
-                    borderBottom: 'none'
-                  }
-                }}
-              >
-                <Box sx={{ flex: 1 }}>
-                  <Box sx={{ display: 'flex', alignItems: 'center', mb: 0.5 }}>
-                    <Typography 
-                      sx={{ 
-                        color: '#e0e0e0', 
-                        fontWeight: 600,
-                        fontSize: '1.1rem',
-                        mr: 2
-                      }}
-                    >
-                      {result.symbol}
-                    </Typography>
-                    {result.price && (
-                      <Typography 
-                        sx={{ 
-                          color: '#9e9e9e',
-                          fontWeight: 500,
-                          fontSize: '1rem'
-                        }}
-                      >
-                        ${result.price.toFixed(2)}
+      <Box sx={{ position: 'relative', height: 0 }}>
+        {searchResults.length > 0 && searchQuery && isOpen && (
+          <Paper 
+            ref={searchRef}
+            sx={{ 
+              position: 'absolute', 
+              top: 8, 
+              left: 0, 
+              right: 0, 
+              maxHeight: 400, 
+              overflow: 'auto',
+              bgcolor: '#2A2D3E',
+              borderRadius: '12px',
+              border: '2px solid',
+              borderColor: 'rgba(255, 255, 255, 0.1)',
+              boxShadow: '0 8px 16px rgba(0, 0, 0, 0.2)',
+              zIndex: 9999,
+            }}
+          >
+            <List sx={{ py: 0 }}>
+              {searchResults.map((result) => (
+                <ListItem 
+                  key={result.symbol} 
+                  onClick={() => handleSelect(result.symbol)}
+                  sx={{ 
+                    cursor: 'pointer',
+                    transition: 'all 0.2s',
+                    '&:hover': { 
+                      bgcolor: 'rgba(105, 240, 174, 0.1)',
+                    },
+                    borderBottom: '1px solid rgba(255, 255, 255, 0.05)',
+                    '&:last-child': {
+                      borderBottom: 'none'
+                    }
+                  }}
+                >
+                  <ListItemText
+                    primary={
+                      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <Typography variant="body1" sx={{ fontWeight: 'bold', color: '#e0e0e0' }}>
+                          {result.symbol}
+                        </Typography>
+                        {result.price && (
+                          <Typography variant="body2" sx={{ color: '#69f0ae', fontWeight: 'medium' }}>
+                            ${result.price.toFixed(2)}
+                          </Typography>
+                        )}
+                      </Box>
+                    }
+                    secondary={
+                      <Typography variant="body2" sx={{ color: '#9e9e9e', fontSize: '0.85rem' }}>
+                        {result.description || result.name}
                       </Typography>
-                    )}
-                  </Box>
-                  <Typography 
-                    sx={{ 
-                      color: '#9e9e9e', 
-                      fontSize: '0.9rem',
-                      fontWeight: 400,
-                      lineHeight: 1.4
-                    }}
-                  >
-                    {result.name}
-                  </Typography>
-                </Box>
-                <Box sx={{ 
-                  display: 'flex', 
-                  flexDirection: 'column', 
-                  alignItems: 'flex-end',
-                  ml: 2
-                }}>
-                  <Typography 
-                    variant="body2" 
-                    sx={{ 
-                      color: (result.change || 0) >= 0 ? '#69f0ae' : '#ff5252',
-                      fontWeight: 600,
-                      fontSize: '0.95rem',
-                      display: 'flex',
-                      alignItems: 'center'
-                    }}
-                  >
-                    {typeof result.change === 'number' ? (
-                      `${result.change >= 0 ? '+' : ''}${result.change.toFixed(2)}%`
-                    ) : '-'}
-                  </Typography>
-                </Box>
-              </ListItem>
-            ))}
-          </List>
-        </Paper>
-      )}
+                    }
+                  />
+                </ListItem>
+              ))}
+            </List>
+          </Paper>
+        )}
+      </Box>
     </Box>
   );
 } 

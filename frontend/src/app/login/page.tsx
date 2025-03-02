@@ -103,7 +103,7 @@ export default function LoginPage() {
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
-        background: 'linear-gradient(135deg, #1a1f2c 0%, #161b26 100%)',
+        background: 'linear-gradient(135deg, #121620 0%, #0d1118 100%)',
         position: 'relative',
         overflow: 'hidden',
       }}
@@ -180,16 +180,16 @@ export default function LoginPage() {
       <Container maxWidth="xs" sx={{ position: 'relative', zIndex: 1 }}>
         <Box
           sx={{
-            backgroundColor: 'rgba(26, 31, 44, 0.8)',
+            backgroundColor: 'rgba(18, 22, 32, 0.85)',
             backdropFilter: 'blur(20px)',
             borderRadius: 4,
-            boxShadow: '0 8px 32px rgba(0, 0, 0, 0.4)',
+            boxShadow: '0 8px 32px rgba(0, 0, 0, 0.6)',
             p: 4,
             display: 'flex',
             flexDirection: 'column',
             alignItems: 'center',
             position: 'relative',
-            border: '1px solid rgba(105, 240, 174, 0.1)',
+            border: '1px solid rgba(105, 240, 174, 0.2)',
             overflow: 'hidden',
             '&::before': {
               content: '""',
@@ -198,7 +198,7 @@ export default function LoginPage() {
               left: '-100%',
               width: '200%',
               height: '4px',
-              background: 'linear-gradient(90deg, transparent, rgba(105, 240, 174, 0.2), transparent)',
+              background: 'linear-gradient(90deg, transparent, rgba(105, 240, 174, 0.4), transparent)',
               animation: 'shimmer 3s infinite',
             },
             '@keyframes shimmer': {

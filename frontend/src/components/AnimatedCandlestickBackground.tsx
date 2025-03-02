@@ -57,7 +57,7 @@ const AnimatedCandlestickBackground: React.FC = () => {
           high,
           low,
           close,
-          color: close > open ? 'rgba(105, 240, 174, 0.4)' : 'rgba(255, 82, 82, 0.4)',
+          color: close > open ? 'rgba(105, 240, 174, 0.7)' : 'rgba(255, 82, 82, 0.7)',
           width: candleWidth
         });
         
@@ -82,7 +82,7 @@ const AnimatedCandlestickBackground: React.FC = () => {
         candles: generateCandles(candleCount),
         speed: 0.2 + Math.random() * 0.3, // Slow speed for subtle movement
         y: (canvas.height / 4) * (i + 1), // Distribute charts vertically
-        opacity: 0.1 + (i * 0.05) // Varying opacity
+        opacity: 0.2 + (i * 0.1) // Increased opacity for better visibility
       });
     }
     
@@ -132,7 +132,7 @@ const AnimatedCandlestickBackground: React.FC = () => {
             high,
             low,
             close,
-            color: close > open ? 'rgba(105, 240, 174, 0.4)' : 'rgba(255, 82, 82, 0.4)',
+            color: close > open ? 'rgba(105, 240, 174, 0.7)' : 'rgba(255, 82, 82, 0.7)',
             width: candleWidth
           });
         }
@@ -147,7 +147,7 @@ const AnimatedCandlestickBackground: React.FC = () => {
           ctx.moveTo(candle.x + candle.width / 2, chart.y - (baseY - candle.high));
           ctx.lineTo(candle.x + candle.width / 2, chart.y - (baseY - candle.low));
           ctx.strokeStyle = candle.color;
-          ctx.lineWidth = 1;
+          ctx.lineWidth = 2; // Increased line width for better visibility
           ctx.stroke();
           
           // Draw the body (rectangle)
@@ -196,7 +196,7 @@ const AnimatedCandlestickBackground: React.FC = () => {
         width: '100%',
         height: '100%',
         zIndex: 0,
-        opacity: 0.3, // Subtle background
+        opacity: 0.5, // Increased opacity from 0.3 to 0.5 for better visibility
       }}
     >
       <canvas

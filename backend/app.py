@@ -1,22 +1,29 @@
-from flask import Flask, jsonify, request
+import os
+import logging
+import json
+import random
+from datetime import datetime, timedelta
+from functools import wraps
+
+import finnhub
+import jwt
+from flask import Flask, request, jsonify
 from flask_cors import CORS
 from dotenv import load_dotenv
-import os
-import finnhub
-from datetime import datetime, timedelta
-import logging
 import firebase_admin
 from firebase_admin import credentials, firestore, auth
-import jwt
-from functools import wraps
-import random
 
-# Configure logging
-logging.basicConfig(level=logging.INFO)
-logger = logging.getLogger(__name__)
+from ml_service import StockAnalyzer
 
 # Load environment variables
 load_dotenv()
+
+# Configure logging
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+)
+logger = logging.getLogger(__name__)
 
 app = Flask(__name__)
 app.config['SECRET_KEY'] = os.getenv('SECRET_KEY', 'your-secret-key-here')
@@ -44,11 +51,10 @@ if not all([FINNHUB_KEY, NEWS_API_KEY]):
     raise ValueError("Missing required API keys!")
 
 # Initialize Finnhub client
-try:
-    finnhub_client = finnhub.Client(api_key=FINNHUB_KEY)
-except Exception as e:
-    logger.error(f"Error initializing Finnhub client: {str(e)}")
-    raise
+finnhub_client = finnhub.Client(api_key=FINNHUB_KEY)
+
+# Initialize ML service
+stock_analyzer = StockAnalyzer(api_key=FINNHUB_KEY)
 
 # Token required decorator
 
@@ -236,12 +242,14 @@ def add_funds(current_user):
 
 @app.route('/api/trading/buy', methods=['POST'])
 @token_required
-def buy_stock(current_user):
+def buy(current_user):
     data = request.get_json()
     symbol = data.get('symbol')
     shares = data.get('shares')
+    analyze_first = data.get('analyze_first', False)
+    days = data.get('days', 14)  # Default to 14 days if not provided
 
-    if not all([symbol, shares]) or shares <= 0:
+    if not symbol or not shares or shares <= 0:
         return jsonify({'error': 'Invalid request parameters'}), 400
 
     try:
@@ -249,6 +257,39 @@ def buy_stock(current_user):
         quote = finnhub_client.quote(symbol)
         price = quote['c']
         total_cost = price * shares
+
+        # If analyze_first is True, perform ML analysis before purchase
+        if analyze_first:
+            try:
+                # Pass the days parameter to the analyze_stock method
+                analysis_result = stock_analyzer.analyze_stock(
+                    symbol, forecast_days=days)
+
+                # Calculate the predicted price based on current price and expected growth
+                current_price = analysis_result.get('current_price', price)
+                expected_growth = analysis_result.get(
+                    'expected_growth_pct', 0.0)
+                predicted_price = current_price * (1 + expected_growth / 100)
+
+                # Always return analysis result without completing purchase
+                # The frontend will handle the decision to proceed with purchase
+                return jsonify({
+                    'analysis': {
+                        'symbol': symbol,
+                        'current_price': price,
+                        'predicted_price': predicted_price,
+                        'total_cost': total_cost,
+                        'is_good_buy': analysis_result.get('is_good_buy', False),
+                        'expected_growth': analysis_result.get('expected_growth_pct', 0.0),
+                        'confidence': analysis_result.get('confidence_score', 50) / 100,
+                        'forecast': analysis_result.get('forecast_prices', []),
+                        'days': days  # Include the days parameter in the response
+                    }
+                })
+            except Exception as e:
+                logger.error(f"Error analyzing stock {symbol}: {str(e)}")
+                # Return error to frontend
+                return jsonify({'error': f'Error analyzing stock: {str(e)}'}), 400
 
         # Get user's current balance
         user_ref = db.collection('users').document(current_user.uid)
@@ -260,23 +301,52 @@ def buy_stock(current_user):
 
         # Update or create portfolio position
         portfolio_ref = db.collection('portfolios')
-        position_query = portfolio_ref.where(
-            'user_id', '==', current_user.uid).where('symbol', '==', symbol)
-        position_docs = position_query.stream()
 
-        position_list = list(position_docs)
+        # Fix the Firestore query
+        try:
+            position_docs = portfolio_ref.where(
+                filter=firestore.FieldFilter('user_id', '==', current_user.uid)
+            ).where(
+                filter=firestore.FieldFilter('symbol', '==', symbol)
+            ).stream()
+
+            position_list = list(position_docs)
+        except Exception as e:
+            logger.error(f"Error querying portfolio: {str(e)}")
+            # Fallback to a simpler query if the compound query fails
+            position_list = []
+            all_positions = portfolio_ref.where(
+                filter=firestore.FieldFilter('user_id', '==', current_user.uid)
+            ).stream()
+            for pos in all_positions:
+                pos_data = pos.to_dict()
+                if pos_data.get('symbol') == symbol:
+                    position_list.append(pos)
+
         if position_list:
             position_doc = position_list[0]
-            current_shares = position_doc.to_dict()['shares']
+            position_data = position_doc.to_dict()
+            current_shares = position_data.get('shares', 0)
+            current_avg_price = position_data.get('avg_price', 0)
+
+            # Calculate new average price
+            new_shares = current_shares + shares
+            new_avg_price = ((current_shares * current_avg_price) +
+                             (shares * price)) / new_shares
+
+            # Update position
             portfolio_ref.document(position_doc.id).update({
-                'shares': current_shares + shares,
+                'shares': new_shares,
+                'avg_price': new_avg_price,
                 'updated_at': datetime.utcnow()
             })
         else:
+            # Create new position
             portfolio_ref.add({
                 'user_id': current_user.uid,
                 'symbol': symbol,
                 'shares': shares,
+                'avg_price': price,
                 'created_at': datetime.utcnow(),
                 'updated_at': datetime.utcnow()
             })
@@ -818,6 +888,91 @@ def get_stock_news(symbol):
         logger.error(f"Error fetching news for {symbol}: {str(e)}")
         # Return empty news array instead of error
         return jsonify([])
+
+
+@app.route('/api/trading/analyze-stock', methods=['GET'])
+@token_required
+def analyze_stock(current_user):
+    symbol = request.args.get('symbol')
+    if not symbol:
+        return jsonify({'error': 'Symbol is required'}), 400
+
+    try:
+        # Get the stock analysis
+        analysis_result = stock_analyzer.analyze_stock(symbol)
+
+        if not analysis_result.get('success', False):
+            return jsonify({'error': analysis_result.get('message', 'Analysis failed')}), 400
+
+        # Get current stock price for reference
+        quote = finnhub_client.quote(symbol)
+        current_price = quote['c']
+
+        # Enhance the response with additional information
+        response = {
+            'symbol': symbol,
+            'current_price': current_price,
+            'is_good_buy': analysis_result['is_good_buy'],
+            'expected_growth': analysis_result['expected_growth_pct'],
+            # Convert to 0-1 scale
+            'confidence': analysis_result['confidence_score'] / 100,
+            'forecast': analysis_result['forecast_prices']
+        }
+
+        return jsonify(response)
+    except Exception as e:
+        logger.error(f"Error analyzing stock {symbol}: {str(e)}")
+        return jsonify({'error': f'Failed to analyze stock: {str(e)}'}), 400
+
+
+@app.route('/api/trading/alternative-stocks', methods=['GET'])
+@token_required
+def alternative_stocks(current_user):
+    sector = request.args.get('sector', 'technology')
+    budget = float(request.args.get('budget', 1000.0))
+    count = int(request.args.get('count', 5))
+    # Get days parameter with default of 14
+    days = int(request.args.get('days', 14))
+
+    try:
+        # Find alternative stocks using the ML service
+        alternatives = stock_analyzer.find_alternative_stocks(
+            sector=sector,
+            budget=budget,
+            count=count,
+            days=days  # Pass days parameter to the method
+        )
+
+        return jsonify({
+            'alternatives': alternatives
+        })
+    except Exception as e:
+        logger.error(f"Error finding alternative stocks: {str(e)}")
+        return jsonify({'error': str(e)}), 500
+
+
+@app.route('/api/market/quote', methods=['GET'])
+@token_required
+def get_stock_quote(current_user):
+    """
+    Get real-time quote for a stock symbol
+    """
+    symbol = request.args.get('symbol')
+    if not symbol:
+        return jsonify({'error': 'Symbol parameter is required'}), 400
+
+    try:
+        # Get quote from Finnhub
+        quote = finnhub_client.quote(symbol)
+
+        # If quote is empty or invalid, return error
+        if not quote or 'c' not in quote:
+            return jsonify({'error': f'Could not fetch quote for {symbol}'}), 404
+
+        return jsonify(quote)
+    except Exception as e:
+        logger.error(f"Error fetching quote for {symbol}: {str(e)}")
+        return jsonify({'error': 'Failed to fetch stock quote'}), 500
 
 
 if __name__ == '__main__':

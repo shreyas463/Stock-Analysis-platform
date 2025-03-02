@@ -31,8 +31,6 @@ import {
   MenuItem,
   InputLabel,
   FormControl,
-  Grid,
-  LinearProgress,
 } from '@mui/material';
 import { useTheme } from '@mui/material/styles';
 import { auth } from '@/firebase/config';
@@ -42,17 +40,20 @@ import InfoOutlinedIcon from '@mui/icons-material/InfoOutlined';
 import CheckCircleOutlineIcon from '@mui/icons-material/CheckCircleOutline';
 import CancelOutlinedIcon from '@mui/icons-material/CancelOutlined';
 import AnalyticsIcon from '@mui/icons-material/Analytics';
+import SearchIcon from '@mui/icons-material/Search';
+import ShowChartIcon from '@mui/icons-material/ShowChart';
+import ShoppingCartIcon from '@mui/icons-material/ShoppingCart';
+import MonetizationOnIcon from '@mui/icons-material/MonetizationOn';
+import ArrowDownwardIcon from '@mui/icons-material/ArrowDownward';
+import ArrowUpwardIcon from '@mui/icons-material/ArrowUpward';
 import AddIcon from '@mui/icons-material/Add';
 import AccountBalanceWalletIcon from '@mui/icons-material/AccountBalanceWallet';
 import ReceiptLongIcon from '@mui/icons-material/ReceiptLong';
 import AccountBalanceIcon from '@mui/icons-material/AccountBalance';
-import ArrowUpwardIcon from '@mui/icons-material/ArrowUpward';
-import ArrowDownwardIcon from '@mui/icons-material/ArrowDownward';
 import InfoIcon from '@mui/icons-material/Info';
 import RecommendIcon from '@mui/icons-material/Recommend';
 import WarningAmberIcon from '@mui/icons-material/WarningAmber';
 import CloseIcon from '@mui/icons-material/Close';
-import SearchIcon from '@mui/icons-material/Search';
 
 interface PortfolioPosition {
   symbol: string;
@@ -371,333 +372,146 @@ export default function TradingPanel() {
 
       {/* Analysis Result Dialog */}
       <Dialog 
-        open={!!analysisResult} 
-        onClose={() => {
-          setAnalysisResult(null);
-          setShowAlternatives(false);
-        }}
+        open={analysisResult !== null} 
+        onClose={() => setAnalysisResult(null)}
         maxWidth="md"
         PaperProps={{
           sx: {
-            bgcolor: 'rgba(36, 36, 36, 0.95)',
-            borderRadius: 3,
-            border: '1px solid rgba(105, 240, 174, 0.3)',
-            boxShadow: '0 8px 32px rgba(0, 0, 0, 0.5)',
-            backgroundImage: 'linear-gradient(to bottom right, rgba(105, 240, 174, 0.05), rgba(36, 36, 36, 0.95))',
-            overflow: 'hidden'
+            bgcolor: '#242424',
+            color: 'white',
+            borderRadius: 2,
+            minWidth: '500px'
           }
         }}
       >
         <DialogTitle sx={{ 
-          borderBottom: '1px solid rgba(255, 255, 255, 0.1)', 
-          p: 3,
-          display: 'flex',
-          alignItems: 'center',
-          gap: 1.5
+          display: 'flex', 
+          alignItems: 'center', 
+          gap: 1,
+          borderBottom: '1px solid rgba(255,255,255,0.1)',
+          pb: 2
         }}>
-          <AnalyticsIcon sx={{ color: '#69f0ae' }} />
-          <Typography variant="h6" component="div" sx={{ 
-            color: '#fff',
-            fontWeight: 'bold',
-            flexGrow: 1
-          }}>
-            ARIMA Model Analysis: {analysisResult?.symbol}
+          <AnalyticsIcon color="primary" />
+          <Typography variant="h6">
+            ARIMA Model Analysis for {analysisResult?.symbol}
           </Typography>
-          <IconButton 
-            edge="end" 
-            color="inherit" 
-            onClick={() => {
-              setAnalysisResult(null);
-              setShowAlternatives(false);
-            }}
-            sx={{ color: 'rgba(255, 255, 255, 0.7)' }}
-          >
-            <CloseIcon />
-          </IconButton>
         </DialogTitle>
-        <DialogContent sx={{ p: 3 }}>
+        <DialogContent sx={{ mt: 2 }}>
           {analysisResult && (
             <Box>
-              <Grid container spacing={3} sx={{ mb: 3 }}>
-                <Grid item xs={12} md={6}>
-                  <Paper sx={{ 
-                    p: 2.5, 
-                    bgcolor: 'rgba(26, 26, 26, 0.7)',
-                    borderRadius: 2,
-                    border: '1px solid rgba(255, 255, 255, 0.1)',
-                    height: '100%'
+              <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
+                <Box>
+                  <Typography variant="h5">${analysisResult.current_price.toFixed(2)}</Typography>
+                  <Typography variant="body2" color="text.secondary">Current Price</Typography>
+                </Box>
+                <Box sx={{ textAlign: 'center' }}>
+                  <Typography variant="h6" sx={{ 
+                    color: analysisResult.expected_growth > 0 ? '#69f0ae' : '#ff5252',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center'
                   }}>
-                    <Typography variant="subtitle1" sx={{ color: '#9e9e9e', mb: 2 }}>
-                      Current Price
-                    </Typography>
-                    <Typography variant="h4" sx={{ 
-                      color: '#fff', 
-                      fontWeight: 'bold',
-                      mb: 1
-                    }}>
-                      ${analysisResult.current_price.toFixed(2)}
-                    </Typography>
+                    {analysisResult.expected_growth > 0 ? <TrendingUpIcon fontSize="small" sx={{ mr: 0.5 }} /> : <TrendingDownIcon fontSize="small" sx={{ mr: 0.5 }} />}
+                    {Math.abs(analysisResult.expected_growth).toFixed(2)}%
+                  </Typography>
+                  <Typography variant="body2" color="text.secondary">Expected Change</Typography>
+                </Box>
+                <Box>
+                  <Typography variant="h5" sx={{ 
+                    color: analysisResult.expected_growth > 0 ? '#69f0ae' : '#ff5252' 
+                  }}>
+                    ${analysisResult.predicted_price.toFixed(2)}
+                  </Typography>
+                  <Typography variant="body2" color="text.secondary">Predicted Price ({analysisResult.days} days)</Typography>
+                </Box>
+                <Chip 
+                  icon={analysisResult.is_good_buy ? <CheckCircleOutlineIcon /> : <CancelOutlinedIcon />} 
+                  label={analysisResult.is_good_buy ? "Good Buy" : "Not Recommended"} 
+                  color={analysisResult.is_good_buy ? "success" : "error"}
+                  sx={{ fontWeight: 'bold' }}
+                />
+              </Box>
+              
+              <Box sx={{ mb: 3 }}>
+                <Typography variant="body1" sx={{ mb: 1, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                  <span>Confidence:</span>
+                  <Box sx={{ 
+                    width: '60%', 
+                    height: '8px', 
+                    bgcolor: 'rgba(255,255,255,0.1)', 
+                    borderRadius: '4px',
+                    position: 'relative',
+                    overflow: 'hidden'
+                  }}>
                     <Box sx={{ 
-                      display: 'flex', 
-                      alignItems: 'center', 
-                      gap: 1,
-                      mt: 2
-                    }}>
-                      <Chip 
-                        label={analysisResult.is_good_buy ? "Good Buy" : "Not Recommended"} 
-                        color={analysisResult.is_good_buy ? "success" : "error"}
-                        sx={{ 
-                          fontWeight: 'bold',
-                          px: 1
-                        }}
-                      />
-                    </Box>
-                  </Paper>
-                </Grid>
-                <Grid item xs={12} md={6}>
-                  <Paper sx={{ 
-                    p: 2.5, 
-                    bgcolor: 'rgba(26, 26, 26, 0.7)',
-                    borderRadius: 2,
-                    border: '1px solid rgba(255, 255, 255, 0.1)',
-                    height: '100%'
-                  }}>
-                    <Typography variant="subtitle1" sx={{ color: '#9e9e9e', mb: 2 }}>
-                      Predicted Price (in {analysisDays} days)
-                    </Typography>
-                    <Typography variant="h4" sx={{ 
-                      color: '#fff', 
-                      fontWeight: 'bold',
-                      mb: 1
-                    }}>
-                      ${analysisResult.predicted_price.toFixed(2)}
-                    </Typography>
-                    <Box sx={{ 
-                      display: 'flex', 
-                      alignItems: 'center', 
-                      gap: 1,
-                      mt: 2
-                    }}>
-                      <Typography variant="body2" sx={{ color: '#9e9e9e' }}>
-                        Total Cost:
-                      </Typography>
-                      <Typography variant="body1" sx={{ color: '#69f0ae', fontWeight: 'medium' }}>
-                        ${analysisResult.total_cost.toFixed(2)}
-                      </Typography>
-                    </Box>
-                  </Paper>
-                </Grid>
-              </Grid>
-
-              <Grid container spacing={3} sx={{ mb: 3 }}>
-                <Grid item xs={12} md={6}>
-                  <Paper sx={{ 
-                    p: 2.5, 
-                    bgcolor: 'rgba(26, 26, 26, 0.7)',
-                    borderRadius: 2,
-                    border: '1px solid rgba(255, 255, 255, 0.1)'
-                  }}>
-                    <Typography variant="subtitle1" sx={{ color: '#9e9e9e', mb: 2 }}>
-                      Expected Growth
-                    </Typography>
-                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                      {analysisResult.expected_growth >= 0 ? (
-                        <ArrowUpwardIcon sx={{ color: '#69f0ae' }} />
-                      ) : (
-                        <ArrowDownwardIcon sx={{ color: '#ff5252' }} />
-                      )}
-                      <Typography variant="h5" sx={{ 
-                        color: analysisResult.expected_growth >= 0 ? '#69f0ae' : '#ff5252',
-                        fontWeight: 'bold'
-                      }}>
-                        {Math.abs(analysisResult.expected_growth * 100).toFixed(2)}%
-                      </Typography>
-                    </Box>
-                    <LinearProgress 
-                      variant="determinate" 
-                      value={Math.min(Math.abs(analysisResult.expected_growth * 100), 100)}
-                      sx={{ 
-                        mt: 2,
-                        height: 8,
-                        borderRadius: 4,
-                        bgcolor: 'rgba(255, 255, 255, 0.1)',
-                        '& .MuiLinearProgress-bar': {
-                          bgcolor: analysisResult.expected_growth >= 0 ? '#69f0ae' : '#ff5252',
-                        }
-                      }}
-                    />
-                  </Paper>
-                </Grid>
-                <Grid item xs={12} md={6}>
-                  <Paper sx={{ 
-                    p: 2.5, 
-                    bgcolor: 'rgba(26, 26, 26, 0.7)',
-                    borderRadius: 2,
-                    border: '1px solid rgba(255, 255, 255, 0.1)'
-                  }}>
-                    <Typography variant="subtitle1" sx={{ color: '#9e9e9e', mb: 2 }}>
-                      Confidence Level
-                    </Typography>
-                    <Box sx={{ position: 'relative', display: 'inline-flex', width: '100%' }}>
-                      <CircularProgress
-                        variant="determinate"
-                        value={analysisResult.confidence * 100}
-                        size={80}
-                        thickness={4}
-                        sx={{
-                          color: '#69f0ae',
-                          '& .MuiCircularProgress-circle': {
-                            strokeLinecap: 'round',
-                          },
-                        }}
-                      />
-                      <Box
-                        sx={{
-                          top: 0,
-                          left: 0,
-                          bottom: 0,
-                          right: 0,
-                          position: 'absolute',
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                        }}
-                      >
-                        <Typography
-                          variant="h6"
-                          component="div"
-                          sx={{ color: '#fff', fontWeight: 'bold' }}
-                        >
-                          {(analysisResult.confidence * 100).toFixed(0)}%
-                        </Typography>
-                      </Box>
-                    </Box>
-                  </Paper>
-                </Grid>
-              </Grid>
-
-              <Paper sx={{ 
-                p: 2.5, 
-                bgcolor: 'rgba(26, 26, 26, 0.7)',
-                borderRadius: 2,
-                border: '1px solid rgba(255, 255, 255, 0.1)',
-                mb: 3
-              }}>
-                <Typography variant="subtitle1" sx={{ color: '#fff', mb: 2, display: 'flex', alignItems: 'center', gap: 1 }}>
-                  <InfoIcon fontSize="small" sx={{ color: '#69f0ae' }} />
-                  Analysis Summary
+                      position: 'absolute',
+                      left: 0,
+                      top: 0,
+                      height: '100%',
+                      width: `${analysisResult.confidence * 100}%`,
+                      bgcolor: analysisResult.confidence > 0.7 ? '#69f0ae' : 
+                              analysisResult.confidence > 0.4 ? '#ffb74d' : '#ff5252',
+                      borderRadius: '4px'
+                    }} />
+                  </Box>
+                  <span>{(analysisResult.confidence * 100).toFixed(0)}%</span>
                 </Typography>
-                <Typography variant="body2" sx={{ color: '#e0e0e0', mb: 2 }}>
-                  This analysis is based on historical data and uses the ARIMA model to predict future price movements.
-                  {!analysisResult.is_good_buy && " Based on our analysis, this may not be the best investment at this time."}
+                
+                <Typography variant="body1" sx={{ mb: 1 }}>
+                  Total Cost: ${analysisResult.total_cost.toFixed(2)}
                 </Typography>
-                {!analysisResult.is_good_buy && (
-                  <Button
-                    variant="outlined"
-                    color="primary"
+              </Box>
+              
+              <Divider sx={{ my: 2, borderColor: 'rgba(255,255,255,0.1)' }} />
+              
+              <Box sx={{ mt: 3 }}>
+                <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+                  This analysis is based on historical data and ARIMA model predictions for the next {analysisResult.days} days. Past performance is not indicative of future results.
+                </Typography>
+                
+                {!showAlternatives && !analysisResult.is_good_buy && (
+                  <Button 
+                    variant="outlined" 
+                    color="primary" 
                     onClick={findAlternativeStocks}
                     disabled={isLoadingAlternatives}
-                    startIcon={isLoadingAlternatives ? <CircularProgress size={20} /> : <SearchIcon />}
-                    sx={{ 
-                      mt: 1,
-                      borderColor: 'rgba(105, 240, 174, 0.5)',
-                      color: '#69f0ae',
-                      '&:hover': {
-                        borderColor: '#69f0ae',
-                        bgcolor: 'rgba(105, 240, 174, 0.1)'
-                      }
-                    }}
+                    startIcon={isLoadingAlternatives ? <CircularProgress size={20} /> : null}
+                    sx={{ mr: 2 }}
                   >
-                    Find Alternative Stocks
+                    Find Alternatives
                   </Button>
                 )}
-              </Paper>
-
+              </Box>
+              
               {showAlternatives && alternativeStocks.length > 0 && (
                 <Box sx={{ mt: 3 }}>
-                  <Typography variant="h6" sx={{ color: '#69f0ae', mb: 2, display: 'flex', alignItems: 'center', gap: 1 }}>
-                    <RecommendIcon fontSize="small" />
-                    Recommended Alternatives
+                  <Typography variant="subtitle1" sx={{ mb: 2 }}>
+                    Alternative Stocks to Consider:
                   </Typography>
-                  <TableContainer component={Paper} sx={{ 
-                    bgcolor: 'rgba(26, 26, 26, 0.7)', 
-                    borderRadius: 2,
-                    boxShadow: 'inset 0 0 10px rgba(0, 0, 0, 0.2)'
-                  }}>
-                    <Table>
+                  <TableContainer component={Paper} sx={{ bgcolor: 'rgba(0,0,0,0.2)' }}>
+                    <Table size="small">
                       <TableHead>
                         <TableRow>
-                          <TableCell sx={{ color: '#9e9e9e', fontWeight: 600, borderBottom: '1px solid rgba(255, 255, 255, 0.1)' }}>Symbol</TableCell>
-                          <TableCell align="right" sx={{ color: '#9e9e9e', fontWeight: 600, borderBottom: '1px solid rgba(255, 255, 255, 0.1)' }}>Price</TableCell>
-                          <TableCell align="right" sx={{ color: '#9e9e9e', fontWeight: 600, borderBottom: '1px solid rgba(255, 255, 255, 0.1)' }}>Expected Growth</TableCell>
-                          <TableCell align="right" sx={{ color: '#9e9e9e', fontWeight: 600, borderBottom: '1px solid rgba(255, 255, 255, 0.1)' }}>Confidence</TableCell>
-                          <TableCell align="right" sx={{ color: '#9e9e9e', fontWeight: 600, borderBottom: '1px solid rgba(255, 255, 255, 0.1)' }}>Action</TableCell>
+                          <TableCell sx={{ color: 'white' }}>Symbol</TableCell>
+                          <TableCell sx={{ color: 'white' }}>Price</TableCell>
+                          <TableCell sx={{ color: 'white' }}>Expected Growth</TableCell>
+                          <TableCell sx={{ color: 'white' }}>Confidence</TableCell>
                         </TableRow>
                       </TableHead>
                       <TableBody>
                         {alternativeStocks.map((stock) => (
-                          <TableRow key={stock.symbol} sx={{ 
-                            '&:hover': { 
-                              bgcolor: 'rgba(105, 240, 174, 0.05)'
-                            }
-                          }}>
-                            <TableCell sx={{ color: 'white', fontWeight: 500 }}>{stock.symbol}</TableCell>
-                            <TableCell align="right" sx={{ color: 'white' }}>${stock.price.toFixed(2)}</TableCell>
-                            <TableCell align="right">
-                              <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 0.5 }}>
-                                {stock.expected_growth >= 0 ? (
-                                  <ArrowUpwardIcon fontSize="small" sx={{ color: '#69f0ae' }} />
-                                ) : (
-                                  <ArrowDownwardIcon fontSize="small" sx={{ color: '#ff5252' }} />
-                                )}
-                                <Typography sx={{ 
-                                  color: stock.expected_growth >= 0 ? '#69f0ae' : '#ff5252',
-                                  fontWeight: 'medium'
-                                }}>
-                                  {Math.abs(stock.expected_growth * 100).toFixed(2)}%
-                                </Typography>
-                              </Box>
+                          <TableRow key={stock.symbol}>
+                            <TableCell sx={{ color: 'white' }}>{stock.symbol}</TableCell>
+                            <TableCell sx={{ color: 'white' }}>${stock.price.toFixed(2)}</TableCell>
+                            <TableCell sx={{ 
+                              color: stock.expected_growth > 0 ? '#69f0ae' : '#ff5252',
+                              display: 'flex',
+                              alignItems: 'center'
+                            }}>
+                              {stock.expected_growth > 0 ? <TrendingUpIcon fontSize="small" /> : <TrendingDownIcon fontSize="small" />}
+                              {Math.abs(stock.expected_growth).toFixed(2)}%
                             </TableCell>
-                            <TableCell align="right" sx={{ color: 'white' }}>
-                              <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end' }}>
-                                <LinearProgress 
-                                  variant="determinate" 
-                                  value={stock.confidence * 100}
-                                  sx={{ 
-                                    width: 50,
-                                    mr: 1,
-                                    height: 6,
-                                    borderRadius: 3,
-                                    bgcolor: 'rgba(255, 255, 255, 0.1)',
-                                    '& .MuiLinearProgress-bar': {
-                                      bgcolor: '#69f0ae',
-                                    }
-                                  }}
-                                />
-                                {(stock.confidence * 100).toFixed(0)}%
-                              </Box>
-                            </TableCell>
-                            <TableCell align="right">
-                              <Button 
-                                size="small" 
-                                variant="outlined"
-                                onClick={() => {
-                                  setSelectedStock(stock.symbol);
-                                  setAnalysisResult(null);
-                                  setShowAlternatives(false);
-                                }}
-                                sx={{ 
-                                  borderColor: 'rgba(105, 240, 174, 0.5)',
-                                  color: '#69f0ae',
-                                  '&:hover': {
-                                    borderColor: '#69f0ae',
-                                    bgcolor: 'rgba(105, 240, 174, 0.1)'
-                                  }
-                                }}
-                              >
-                                Select
-                              </Button>
-                            </TableCell>
+                            <TableCell sx={{ color: 'white' }}>{(stock.confidence * 100).toFixed(0)}%</TableCell>
                           </TableRow>
                         ))}
                       </TableBody>
@@ -708,32 +522,17 @@ export default function TradingPanel() {
             </Box>
           )}
         </DialogContent>
-        <DialogActions sx={{ borderTop: '1px solid rgba(255,255,255,0.1)', p: 2, justifyContent: 'space-between' }}>
-          <Button 
-            onClick={() => {
-              setAnalysisResult(null);
-              setShowAlternatives(false);
-            }} 
-            color="error"
-            startIcon={<CancelOutlinedIcon />}
-            sx={{
-              borderRadius: 2,
-              px: 2
-            }}
-          >
+        <DialogActions sx={{ borderTop: '1px solid rgba(255,255,255,0.1)', p: 2 }}>
+          <Button onClick={() => {
+            setAnalysisResult(null);
+            setShowAlternatives(false);
+          }} color="error">
             Cancel
           </Button>
           <Button 
             onClick={proceedWithPurchase} 
             variant="contained" 
             color={analysisResult?.is_good_buy ? "success" : "warning"}
-            startIcon={analysisResult?.is_good_buy ? <CheckCircleOutlineIcon /> : <WarningAmberIcon />}
-            sx={{
-              borderRadius: 2,
-              px: 3,
-              py: 1,
-              fontWeight: 'bold'
-            }}
           >
             {analysisResult?.is_good_buy ? "Proceed with Purchase" : "Buy Anyway"}
           </Button>
@@ -744,48 +543,28 @@ export default function TradingPanel() {
         <Card sx={{ 
           flexGrow: 1, 
           minWidth: '300px', 
-          bgcolor: 'rgba(36, 36, 36, 0.8)',
-          borderRadius: 3,
+          bgcolor: '#242424',
+          borderRadius: 2,
           border: '1px solid',
-          borderColor: 'rgba(105, 240, 174, 0.2)',
-          boxShadow: '0 8px 16px rgba(0, 0, 0, 0.2)',
-          transition: 'all 0.3s ease',
-          '&:hover': {
-            boxShadow: '0 12px 20px rgba(0, 0, 0, 0.3)',
-            borderColor: 'rgba(105, 240, 174, 0.4)',
-          }
+          borderColor: 'rgba(255, 255, 255, 0.1)',
+          boxShadow: '0 4px 6px rgba(0, 0, 0, 0.1)'
         }}>
-          <CardContent sx={{ p: 3 }}>
-            <Typography variant="h6" gutterBottom sx={{ 
-              color: '#69f0ae', 
-              fontWeight: 'bold', 
-              mb: 3,
-              fontSize: '1.2rem',
-              borderBottom: '2px solid rgba(105, 240, 174, 0.3)',
-              paddingBottom: '8px'
-            }}>
+          <CardContent>
+            <Typography variant="h6" gutterBottom sx={{ color: '#69f0ae', fontWeight: 'medium', mb: 3 }}>
               Account Overview
             </Typography>
             <Box sx={{ mt: 2, mb: 4 }}>
-              <Typography variant="body1" sx={{ color: '#e0e0e0', mb: 2, display: 'flex', justifyContent: 'space-between', fontSize: '1rem' }}>
+              <Typography variant="body1" sx={{ color: '#e0e0e0', mb: 2, display: 'flex', justifyContent: 'space-between' }}>
                 <span>Cash Balance:</span>
-                <span style={{ color: '#69f0ae', fontWeight: 600 }}>${(balance || 0).toFixed(2)}</span>
+                <span style={{ color: '#69f0ae', fontWeight: 500 }}>${(balance || 0).toFixed(2)}</span>
               </Typography>
-              <Typography variant="body1" sx={{ color: '#e0e0e0', mb: 2, display: 'flex', justifyContent: 'space-between', fontSize: '1rem' }}>
+              <Typography variant="body1" sx={{ color: '#e0e0e0', mb: 2, display: 'flex', justifyContent: 'space-between' }}>
                 <span>Portfolio Value:</span>
-                <span style={{ color: '#69f0ae', fontWeight: 600 }}>${((totalValue || 0) - (balance || 0)).toFixed(2)}</span>
+                <span style={{ color: '#69f0ae', fontWeight: 500 }}>${((totalValue || 0) - (balance || 0)).toFixed(2)}</span>
               </Typography>
-              <Divider sx={{ my: 2, bgcolor: 'rgba(255, 255, 255, 0.1)' }} />
-              <Typography variant="body1" sx={{ 
-                color: '#e0e0e0', 
-                display: 'flex', 
-                justifyContent: 'space-between', 
-                fontSize: '1.1rem',
-                fontWeight: 500,
-                mt: 2
-              }}>
+              <Typography variant="body1" sx={{ color: '#e0e0e0', display: 'flex', justifyContent: 'space-between' }}>
                 <span>Total Value:</span>
-                <span style={{ color: '#69f0ae', fontWeight: 700 }}>${(totalValue || 0).toFixed(2)}</span>
+                <span style={{ color: '#69f0ae', fontWeight: 500 }}>${(totalValue || 0).toFixed(2)}</span>
               </Typography>
             </Box>
             <Button
@@ -799,11 +578,8 @@ export default function TradingPanel() {
                 textTransform: 'none',
                 px: 4,
                 py: 1.5,
-                fontWeight: 'bold',
-                boxShadow: '0 4px 8px rgba(105, 240, 174, 0.3)',
-                width: '100%'
+                fontWeight: 'medium'
               }}
-              startIcon={<AddIcon />}
             >
               Add Funds
             </Button>
@@ -813,108 +589,232 @@ export default function TradingPanel() {
         <Card sx={{ 
           flexGrow: 1, 
           minWidth: '300px',
-          bgcolor: 'rgba(36, 36, 36, 0.8)',
-          borderRadius: 3,
+          bgcolor: '#242424',
+          borderRadius: 2,
           border: '1px solid',
-          borderColor: 'rgba(105, 240, 174, 0.2)',
-          boxShadow: '0 8px 16px rgba(0, 0, 0, 0.2)',
-          transition: 'all 0.3s ease',
-          '&:hover': {
-            boxShadow: '0 12px 20px rgba(0, 0, 0, 0.3)',
-            borderColor: 'rgba(105, 240, 174, 0.4)',
-          }
+          borderColor: 'rgba(255, 255, 255, 0.1)',
+          boxShadow: '0 4px 6px rgba(0, 0, 0, 0.1)'
         }}>
-          <CardContent sx={{ p: 3 }}>
+          <CardContent>
             <Typography variant="h6" sx={{ 
-              mb: 2, 
+              mb: 3, 
               color: '#69f0ae',
               fontWeight: 'bold',
               fontSize: '1.2rem',
               borderBottom: '2px solid rgba(105, 240, 174, 0.3)',
-              paddingBottom: '8px'
+              paddingBottom: '8px',
+              display: 'flex',
+              alignItems: 'center',
+              gap: 1
             }}>
+              <TrendingUpIcon fontSize="small" />
               Trade Stocks
             </Typography>
             
-            <TextField
-              label="Stock Symbol"
-              variant="outlined"
-              fullWidth
-              value={selectedStock}
-              onChange={(e) => setSelectedStock(e.target.value.toUpperCase())}
-              margin="normal"
-              InputProps={{
-                sx: { 
-                  color: 'white',
-                  '& .MuiOutlinedInput-notchedOutline': {
-                    borderColor: 'rgba(255, 255, 255, 0.3)',
-                  },
-                  '&:hover .MuiOutlinedInput-notchedOutline': {
-                    borderColor: 'rgba(105, 240, 174, 0.5)',
-                  },
-                  '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
-                    borderColor: '#69f0ae',
+            <Box sx={{ 
+              bgcolor: 'rgba(26, 26, 26, 0.7)',
+              borderRadius: 2,
+              p: 3,
+              mb: 3,
+              border: '1px solid rgba(255, 255, 255, 0.05)',
+              boxShadow: 'inset 0 2px 10px rgba(0, 0, 0, 0.2)'
+            }}>
+              <TextField
+                label="Stock Symbol"
+                variant="outlined"
+                fullWidth
+                value={selectedStock}
+                onChange={(e) => setSelectedStock(e.target.value.toUpperCase())}
+                margin="normal"
+                placeholder="e.g. AAPL, MSFT, GOOGL"
+                InputProps={{
+                  startAdornment: (
+                    <Box component="span" sx={{ mr: 1, color: 'rgba(255, 255, 255, 0.5)' }}>
+                      <SearchIcon fontSize="small" />
+                    </Box>
+                  ),
+                  sx: { 
+                    color: 'white',
+                    '& .MuiOutlinedInput-notchedOutline': {
+                      borderColor: 'rgba(255, 255, 255, 0.3)',
+                    },
+                    '&:hover .MuiOutlinedInput-notchedOutline': {
+                      borderColor: 'rgba(105, 240, 174, 0.5)',
+                    },
+                    '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
+                      borderColor: '#69f0ae',
+                    },
+                    borderRadius: 2,
+                    fontSize: '1.1rem'
                   }
-                }
-              }}
-              InputLabelProps={{
-                sx: { color: 'rgba(255, 255, 255, 0.7)' }
-              }}
-            />
-            
-            <TextField
-              label="Number of Shares"
-              variant="outlined"
-              fullWidth
-              type="number"
-              value={shares}
-              onChange={(e) => setShares(e.target.value)}
-              margin="normal"
-              InputProps={{
-                sx: { 
-                  color: 'white',
-                  '& .MuiOutlinedInput-notchedOutline': {
-                    borderColor: 'rgba(255, 255, 255, 0.3)',
-                  },
-                  '&:hover .MuiOutlinedInput-notchedOutline': {
-                    borderColor: 'rgba(105, 240, 174, 0.5)',
-                  },
-                  '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
-                    borderColor: '#69f0ae',
+                }}
+                InputLabelProps={{
+                  sx: { color: 'rgba(255, 255, 255, 0.7)' }
+                }}
+              />
+              
+              {selectedStock && (
+                <Box sx={{ 
+                  display: 'flex', 
+                  justifyContent: 'space-between', 
+                  alignItems: 'center',
+                  mt: 2,
+                  p: 2,
+                  borderRadius: 1.5,
+                  bgcolor: 'rgba(105, 240, 174, 0.05)',
+                  border: '1px dashed rgba(105, 240, 174, 0.3)'
+                }}>
+                  <Box>
+                    <Typography variant="body2" sx={{ color: 'rgba(255, 255, 255, 0.6)' }}>
+                      Current Price
+                    </Typography>
+                    <Typography variant="h6" sx={{ color: '#fff', fontWeight: 'bold' }}>
+                      ${selectedStock === 'AAPL' ? '187.42' : 
+                         selectedStock === 'MSFT' ? '415.56' : 
+                         selectedStock === 'GOOGL' ? '142.89' : 
+                         selectedStock === 'AMZN' ? '178.75' : 
+                         selectedStock === 'META' ? '474.99' : '0.00'}
+                    </Typography>
+                  </Box>
+                  <Box sx={{ textAlign: 'right' }}>
+                    <Typography variant="body2" sx={{ color: 'rgba(255, 255, 255, 0.6)' }}>
+                      Daily Change
+                    </Typography>
+                    <Typography variant="body1" sx={{ 
+                      color: selectedStock === 'AAPL' ? '#ff5252' : '#69f0ae',
+                      fontWeight: 'medium',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'flex-end'
+                    }}>
+                      {selectedStock === 'AAPL' ? <ArrowDownwardIcon fontSize="small" sx={{ mr: 0.5 }} /> : 
+                                                  <ArrowUpwardIcon fontSize="small" sx={{ mr: 0.5 }} />}
+                      {selectedStock === 'AAPL' ? '-1.24%' : 
+                       selectedStock === 'MSFT' ? '+0.87%' : 
+                       selectedStock === 'GOOGL' ? '+1.32%' : 
+                       selectedStock === 'AMZN' ? '+2.15%' : 
+                       selectedStock === 'META' ? '+0.76%' : '+0.00%'}
+                    </Typography>
+                  </Box>
+                </Box>
+              )}
+              
+              <TextField
+                label="Number of Shares"
+                variant="outlined"
+                fullWidth
+                type="number"
+                value={shares}
+                onChange={(e) => setShares(e.target.value)}
+                margin="normal"
+                placeholder="Enter quantity"
+                InputProps={{
+                  startAdornment: (
+                    <Box component="span" sx={{ mr: 1, color: 'rgba(255, 255, 255, 0.5)' }}>
+                      <ShowChartIcon fontSize="small" />
+                    </Box>
+                  ),
+                  sx: { 
+                    color: 'white',
+                    '& .MuiOutlinedInput-notchedOutline': {
+                      borderColor: 'rgba(255, 255, 255, 0.3)',
+                    },
+                    '&:hover .MuiOutlinedInput-notchedOutline': {
+                      borderColor: 'rgba(105, 240, 174, 0.5)',
+                    },
+                    '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
+                      borderColor: '#69f0ae',
+                    },
+                    borderRadius: 2,
+                    fontSize: '1.1rem'
                   }
-                }
-              }}
-              InputLabelProps={{
-                sx: { color: 'rgba(255, 255, 255, 0.7)' }
-              }}
-            />
+                }}
+                InputLabelProps={{
+                  sx: { color: 'rgba(255, 255, 255, 0.7)' }
+                }}
+              />
+              
+              {selectedStock && shares && !isNaN(Number(shares)) && Number(shares) > 0 && (
+                <Box sx={{ 
+                  mt: 2,
+                  p: 2,
+                  borderRadius: 1.5,
+                  bgcolor: 'rgba(33, 150, 243, 0.05)',
+                  border: '1px dashed rgba(33, 150, 243, 0.3)',
+                  display: 'flex',
+                  justifyContent: 'space-between'
+                }}>
+                  <Typography variant="body2" sx={{ color: 'rgba(255, 255, 255, 0.7)' }}>
+                    Estimated Total:
+                  </Typography>
+                  <Typography variant="body1" sx={{ fontWeight: 'bold', color: '#2196f3' }}>
+                    ${(Number(shares) * (
+                      selectedStock === 'AAPL' ? 187.42 : 
+                      selectedStock === 'MSFT' ? 415.56 : 
+                      selectedStock === 'GOOGL' ? 142.89 : 
+                      selectedStock === 'AMZN' ? 178.75 : 
+                      selectedStock === 'META' ? 474.99 : 0
+                    )).toFixed(2)}
+                  </Typography>
+                </Box>
+              )}
+            </Box>
             
-            <Box sx={{ mt: 2, mb: 3, display: 'flex', alignItems: 'center' }}>
+            <Box sx={{ 
+              mt: 2, 
+              mb: 3, 
+              display: 'flex', 
+              alignItems: 'center',
+              bgcolor: 'rgba(26, 26, 26, 0.5)',
+              p: 2,
+              borderRadius: 2,
+              border: '1px solid rgba(255, 255, 255, 0.05)'
+            }}>
               <FormControlLabel
                 control={
                   <Switch
                     checked={useMLAnalysis}
                     onChange={(e) => setUseMLAnalysis(e.target.checked)}
                     color="primary"
+                    sx={{
+                      '& .MuiSwitch-switchBase.Mui-checked': {
+                        color: '#69f0ae',
+                      },
+                      '& .MuiSwitch-switchBase.Mui-checked + .MuiSwitch-track': {
+                        backgroundColor: 'rgba(105, 240, 174, 0.5)',
+                      },
+                    }}
                   />
                 }
                 label={
                   <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                    <Typography variant="body2" sx={{ mr: 1 }}>Use ML Analysis</Typography>
-                    <Tooltip title="Analyze the stock using ARIMA model before buying">
-                      <InfoOutlinedIcon fontSize="small" color="action" />
+                    <Typography variant="body1" sx={{ mr: 1, fontWeight: 500, color: 'white' }}>Use ML Analysis</Typography>
+                    <Tooltip title="Analyze the stock using ARIMA model before buying to predict future performance" arrow placement="top">
+                      <InfoOutlinedIcon fontSize="small" sx={{ color: 'rgba(255, 255, 255, 0.7)' }} />
                     </Tooltip>
                   </Box>
                 }
               />
               {useMLAnalysis && (
                 <FormControl variant="outlined" size="small" sx={{ ml: 2, minWidth: 120 }}>
-                  <InputLabel id="analysis-days-label">Days</InputLabel>
+                  <InputLabel id="analysis-days-label" sx={{ color: 'rgba(255, 255, 255, 0.7)' }}>Days</InputLabel>
                   <Select
                     labelId="analysis-days-label"
                     value={analysisDays}
                     onChange={(e) => setAnalysisDays(Number(e.target.value))}
                     label="Days"
+                    sx={{
+                      color: 'white',
+                      '.MuiOutlinedInput-notchedOutline': {
+                        borderColor: 'rgba(255, 255, 255, 0.3)',
+                      },
+                      '&:hover .MuiOutlinedInput-notchedOutline': {
+                        borderColor: 'rgba(105, 240, 174, 0.5)',
+                      },
+                      '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
+                        borderColor: '#69f0ae',
+                      }
+                    }}
                   >
                     <MenuItem value={7}>7 days</MenuItem>
                     <MenuItem value={14}>14 days</MenuItem>
@@ -966,71 +866,38 @@ export default function TradingPanel() {
 
       <Card sx={{ 
         mt: 4, 
-        bgcolor: 'rgba(36, 36, 36, 0.8)',
-        borderRadius: 3,
+        bgcolor: '#242424',
+        borderRadius: 2,
         border: '1px solid',
-        borderColor: 'rgba(105, 240, 174, 0.2)',
-        boxShadow: '0 8px 16px rgba(0, 0, 0, 0.2)',
-        transition: 'all 0.3s ease',
-        '&:hover': {
-          boxShadow: '0 12px 20px rgba(0, 0, 0, 0.3)',
-          borderColor: 'rgba(105, 240, 174, 0.4)',
-        },
-        mb: 4
+        borderColor: 'rgba(255, 255, 255, 0.1)',
+        boxShadow: '0 4px 6px rgba(0, 0, 0, 0.1)'
       }}>
-        <CardContent sx={{ p: 3 }}>
-          <Typography variant="h6" gutterBottom sx={{ 
-            color: '#69f0ae', 
-            fontWeight: 'bold', 
-            mb: 3,
-            fontSize: '1.2rem',
-            borderBottom: '2px solid rgba(105, 240, 174, 0.3)',
-            paddingBottom: '8px',
-            display: 'flex',
-            alignItems: 'center',
-            gap: 1
-          }}>
-            <AccountBalanceIcon fontSize="small" />
+        <CardContent>
+          <Typography variant="h6" gutterBottom sx={{ color: '#69f0ae', fontWeight: 'medium', mb: 3 }}>
             Portfolio
           </Typography>
-          <TableContainer component={Paper} sx={{ 
-            bgcolor: 'rgba(26, 26, 26, 0.7)', 
-            borderRadius: 2,
-            boxShadow: 'inset 0 0 10px rgba(0, 0, 0, 0.2)'
-          }}>
+          <TableContainer component={Paper} sx={{ bgcolor: '#1a1a1a', borderRadius: 2 }}>
             <Table>
               <TableHead>
                 <TableRow>
-                  <TableCell sx={{ color: '#9e9e9e', fontWeight: 600, borderBottom: '1px solid rgba(255, 255, 255, 0.1)' }}>Symbol</TableCell>
-                  <TableCell align="right" sx={{ color: '#9e9e9e', fontWeight: 600, borderBottom: '1px solid rgba(255, 255, 255, 0.1)' }}>Shares</TableCell>
-                  <TableCell align="right" sx={{ color: '#9e9e9e', fontWeight: 600, borderBottom: '1px solid rgba(255, 255, 255, 0.1)' }}>Current Price</TableCell>
-                  <TableCell align="right" sx={{ color: '#9e9e9e', fontWeight: 600, borderBottom: '1px solid rgba(255, 255, 255, 0.1)' }}>Value</TableCell>
+                  <TableCell sx={{ color: '#9e9e9e', fontWeight: 500, borderBottom: '1px solid rgba(255, 255, 255, 0.1)' }}>Symbol</TableCell>
+                  <TableCell align="right" sx={{ color: '#9e9e9e', fontWeight: 500, borderBottom: '1px solid rgba(255, 255, 255, 0.1)' }}>Shares</TableCell>
+                  <TableCell align="right" sx={{ color: '#9e9e9e', fontWeight: 500, borderBottom: '1px solid rgba(255, 255, 255, 0.1)' }}>Current Price</TableCell>
+                  <TableCell align="right" sx={{ color: '#9e9e9e', fontWeight: 500, borderBottom: '1px solid rgba(255, 255, 255, 0.1)' }}>Value</TableCell>
                 </TableRow>
               </TableHead>
               <TableBody>
                 {Array.isArray(portfolio) && portfolio.map((position) => (
-                  <TableRow key={position.symbol} sx={{ 
-                    '&:hover': { 
-                      bgcolor: 'rgba(105, 240, 174, 0.05)'
-                    }
-                  }}>
-                    <TableCell sx={{ color: '#e0e0e0', borderBottom: '1px solid rgba(255, 255, 255, 0.05)', fontWeight: 500 }}>{position.symbol}</TableCell>
+                  <TableRow key={position.symbol}>
+                    <TableCell sx={{ color: '#e0e0e0', borderBottom: '1px solid rgba(255, 255, 255, 0.05)' }}>{position.symbol}</TableCell>
                     <TableCell align="right" sx={{ color: '#e0e0e0', borderBottom: '1px solid rgba(255, 255, 255, 0.05)' }}>{position.shares}</TableCell>
                     <TableCell align="right" sx={{ color: '#e0e0e0', borderBottom: '1px solid rgba(255, 255, 255, 0.05)' }}>${position.current_price.toFixed(2)}</TableCell>
-                    <TableCell align="right" sx={{ color: '#69f0ae', borderBottom: '1px solid rgba(255, 255, 255, 0.05)', fontWeight: 600 }}>${position.position_value.toFixed(2)}</TableCell>
+                    <TableCell align="right" sx={{ color: '#69f0ae', borderBottom: '1px solid rgba(255, 255, 255, 0.05)' }}>${position.position_value.toFixed(2)}</TableCell>
                   </TableRow>
                 ))}
                 {(!Array.isArray(portfolio) || portfolio.length === 0) && (
                   <TableRow>
-                    <TableCell colSpan={4} align="center" sx={{ color: '#9e9e9e', py: 4 }}>
-                      <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2, py: 2 }}>
-                        <AccountBalanceWalletIcon sx={{ fontSize: 40, color: 'rgba(255,255,255,0.2)' }} />
-                        <Typography>No positions in portfolio</Typography>
-                        <Typography variant="caption" sx={{ color: 'rgba(255,255,255,0.5)' }}>
-                          Start trading to build your portfolio
-                        </Typography>
-                      </Box>
-                    </TableCell>
+                    <TableCell colSpan={4} align="center" sx={{ color: '#9e9e9e', py: 4 }}>No positions in portfolio</TableCell>
                   </TableRow>
                 )}
               </TableBody>
@@ -1041,75 +908,43 @@ export default function TradingPanel() {
 
       <Card sx={{ 
         mt: 4, 
-        bgcolor: 'rgba(36, 36, 36, 0.8)',
-        borderRadius: 3,
+        bgcolor: '#242424',
+        borderRadius: 2,
         border: '1px solid',
-        borderColor: 'rgba(105, 240, 174, 0.2)',
-        boxShadow: '0 8px 16px rgba(0, 0, 0, 0.2)',
-        transition: 'all 0.3s ease',
-        '&:hover': {
-          boxShadow: '0 12px 20px rgba(0, 0, 0, 0.3)',
-          borderColor: 'rgba(105, 240, 174, 0.4)',
-        },
-        mb: 4
+        borderColor: 'rgba(255, 255, 255, 0.1)',
+        boxShadow: '0 4px 6px rgba(0, 0, 0, 0.1)'
       }}>
-        <CardContent sx={{ p: 3 }}>
-          <Typography variant="h6" gutterBottom sx={{ 
-            color: '#69f0ae', 
-            fontWeight: 'bold', 
-            mb: 3,
-            fontSize: '1.2rem',
-            borderBottom: '2px solid rgba(105, 240, 174, 0.3)',
-            paddingBottom: '8px',
-            display: 'flex',
-            alignItems: 'center',
-            gap: 1
-          }}>
-            <ReceiptLongIcon fontSize="small" />
+        <CardContent>
+          <Typography variant="h6" gutterBottom sx={{ color: '#69f0ae', fontWeight: 'medium', mb: 3 }}>
             Recent Transactions
           </Typography>
-          <TableContainer component={Paper} sx={{ 
-            bgcolor: 'rgba(26, 26, 26, 0.7)', 
-            borderRadius: 2,
-            boxShadow: 'inset 0 0 10px rgba(0, 0, 0, 0.2)'
-          }}>
+          <TableContainer component={Paper} sx={{ bgcolor: '#1a1a1a', borderRadius: 2 }}>
             <Table>
               <TableHead>
                 <TableRow>
-                  <TableCell sx={{ color: '#9e9e9e', fontWeight: 600, borderBottom: '1px solid rgba(255, 255, 255, 0.1)' }}>Date</TableCell>
-                  <TableCell sx={{ color: '#9e9e9e', fontWeight: 600, borderBottom: '1px solid rgba(255, 255, 255, 0.1)' }}>Type</TableCell>
-                  <TableCell sx={{ color: '#9e9e9e', fontWeight: 600, borderBottom: '1px solid rgba(255, 255, 255, 0.1)' }}>Symbol</TableCell>
-                  <TableCell align="right" sx={{ color: '#9e9e9e', fontWeight: 600, borderBottom: '1px solid rgba(255, 255, 255, 0.1)' }}>Shares</TableCell>
-                  <TableCell align="right" sx={{ color: '#9e9e9e', fontWeight: 600, borderBottom: '1px solid rgba(255, 255, 255, 0.1)' }}>Price</TableCell>
-                  <TableCell align="right" sx={{ color: '#9e9e9e', fontWeight: 600, borderBottom: '1px solid rgba(255, 255, 255, 0.1)' }}>Total</TableCell>
+                  <TableCell sx={{ color: '#9e9e9e', fontWeight: 500, borderBottom: '1px solid rgba(255, 255, 255, 0.1)' }}>Date</TableCell>
+                  <TableCell sx={{ color: '#9e9e9e', fontWeight: 500, borderBottom: '1px solid rgba(255, 255, 255, 0.1)' }}>Type</TableCell>
+                  <TableCell sx={{ color: '#9e9e9e', fontWeight: 500, borderBottom: '1px solid rgba(255, 255, 255, 0.1)' }}>Symbol</TableCell>
+                  <TableCell align="right" sx={{ color: '#9e9e9e', fontWeight: 500, borderBottom: '1px solid rgba(255, 255, 255, 0.1)' }}>Shares</TableCell>
+                  <TableCell align="right" sx={{ color: '#9e9e9e', fontWeight: 500, borderBottom: '1px solid rgba(255, 255, 255, 0.1)' }}>Price</TableCell>
+                  <TableCell align="right" sx={{ color: '#9e9e9e', fontWeight: 500, borderBottom: '1px solid rgba(255, 255, 255, 0.1)' }}>Total</TableCell>
                 </TableRow>
               </TableHead>
               <TableBody>
                 {Array.isArray(transactions) && transactions.map((transaction) => (
-                  <TableRow key={transaction.id} sx={{ 
-                    '&:hover': { 
-                      bgcolor: 'rgba(105, 240, 174, 0.05)'
-                    }
-                  }}>
+                  <TableRow key={transaction.id}>
                     <TableCell sx={{ color: '#e0e0e0', borderBottom: '1px solid rgba(255, 255, 255, 0.05)' }}>{new Date(transaction.created_at).toLocaleDateString()}</TableCell>
                     <TableCell sx={{ 
+                      color: transaction.type === 'buy' ? '#69f0ae' : '#ff5252', 
+                      fontWeight: 500,
                       borderBottom: '1px solid rgba(255, 255, 255, 0.05)'
                     }}>
-                      <Chip 
-                        label={transaction.type.toUpperCase()} 
-                        size="small"
-                        sx={{
-                          bgcolor: transaction.type === 'buy' ? 'rgba(105, 240, 174, 0.2)' : 'rgba(255, 82, 82, 0.2)',
-                          color: transaction.type === 'buy' ? '#69f0ae' : '#ff5252',
-                          fontWeight: 600,
-                          fontSize: '0.75rem'
-                        }}
-                      />
+                      {transaction.type.toUpperCase()}
                     </TableCell>
-                    <TableCell sx={{ color: '#e0e0e0', borderBottom: '1px solid rgba(255, 255, 255, 0.05)', fontWeight: 500 }}>{transaction.symbol}</TableCell>
+                    <TableCell sx={{ color: '#e0e0e0', borderBottom: '1px solid rgba(255, 255, 255, 0.05)' }}>{transaction.symbol}</TableCell>
                     <TableCell align="right" sx={{ color: '#e0e0e0', borderBottom: '1px solid rgba(255, 255, 255, 0.05)' }}>{transaction.shares}</TableCell>
                     <TableCell align="right" sx={{ color: '#e0e0e0', borderBottom: '1px solid rgba(255, 255, 255, 0.05)' }}>${transaction.price.toFixed(2)}</TableCell>
-                    <TableCell align="right" sx={{ color: '#69f0ae', borderBottom: '1px solid rgba(255, 255, 255, 0.05)', fontWeight: 600 }}>${transaction.total.toFixed(2)}</TableCell>
+                    <TableCell align="right" sx={{ color: '#69f0ae', borderBottom: '1px solid rgba(255, 255, 255, 0.05)' }}>${transaction.total.toFixed(2)}</TableCell>
                   </TableRow>
                 ))}
                 {(!Array.isArray(transactions) || transactions.length === 0) && (

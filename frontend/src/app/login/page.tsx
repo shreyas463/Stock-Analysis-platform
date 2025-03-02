@@ -183,7 +183,7 @@ export default function LoginPage() {
             flexDirection: { xs: 'column', md: 'row' },
             alignItems: 'center',
             justifyContent: 'center',
-            gap: 4,
+            gap: 6,
             minHeight: '100vh',
           }}
         >
@@ -202,7 +202,7 @@ export default function LoginPage() {
               border: '1px solid rgba(105, 240, 174, 0.2)',
               overflow: 'hidden',
               width: '100%',
-              maxWidth: '450px',
+              maxWidth: '400px',
               '&::before': {
                 content: '""',
                 position: 'absolute',
@@ -224,35 +224,6 @@ export default function LoginPage() {
             }}
           >
             <StockerrLogo size={90} />
-          
-            <Typography
-              component="h1"
-              variant="h4"
-              sx={{
-                mb: 4,
-                fontWeight: 700,
-                background: 'linear-gradient(45deg, #69f0ae, #00e676)',
-                backgroundClip: 'text',
-                textFillColor: 'transparent',
-                WebkitBackgroundClip: 'text',
-                WebkitTextFillColor: 'transparent',
-                textAlign: 'center',
-                position: 'relative',
-                '&::after': {
-                  content: '""',
-                  position: 'absolute',
-                  bottom: '-8px',
-                  left: '50%',
-                  transform: 'translateX(-50%)',
-                  width: '40px',
-                  height: '2px',
-                  background: '#69f0ae',
-                  borderRadius: '2px',
-                },
-              }}
-            >
-              {isLogin ? 'Welcome Back' : 'Join Stockerr'}
-            </Typography>
             
             {error && (
               <Alert 
@@ -260,6 +231,7 @@ export default function LoginPage() {
                 sx={{ 
                   width: '100%', 
                   mb: 3,
+                  mt: 2,
                   backgroundColor: 'rgba(211, 47, 47, 0.1)',
                   color: '#ff5252',
                   border: '1px solid rgba(244, 67, 54, 0.1)',
@@ -273,7 +245,7 @@ export default function LoginPage() {
               </Alert>
             )}
 
-            <Box component="form" onSubmit={handleSubmit} sx={{ width: '100%' }}>
+            <Box component="form" onSubmit={handleSubmit} sx={{ width: '100%', mt: 2 }}>
               {!isLogin && (
                 <TextField
                   margin="normal"
@@ -477,6 +449,13 @@ export default function LoginPage() {
               display: { xs: 'none', md: 'block' },
               width: '100%',
               maxWidth: '350px',
+              order: { md: 2 },
+              ml: { md: 'auto' },
+              position: 'absolute',
+              top: '80px',
+              right: '20px',
+              bottom: '20px',
+              overflowY: 'auto',
             }}
           >
             <CryptoPriceWidget />

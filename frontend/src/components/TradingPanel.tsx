@@ -54,6 +54,7 @@ import InfoIcon from '@mui/icons-material/Info';
 import RecommendIcon from '@mui/icons-material/Recommend';
 import WarningAmberIcon from '@mui/icons-material/WarningAmber';
 import CloseIcon from '@mui/icons-material/Close';
+import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 
 interface PortfolioPosition {
   symbol: string;
@@ -84,7 +85,11 @@ interface StockAnalysis {
   days: number;
 }
 
-export default function TradingPanel() {
+interface TradingPanelProps {
+  selectedStockFromParent?: string | null;
+}
+
+export default function TradingPanel({ selectedStockFromParent }: TradingPanelProps) {
   const theme = useTheme();
   const [balance, setBalance] = useState(0);
   const [portfolio, setPortfolio] = useState<PortfolioPosition[]>([]);
@@ -103,6 +108,9 @@ export default function TradingPanel() {
   const [showAlternatives, setShowAlternatives] = useState(false);
   const [alternativeStocks, setAlternativeStocks] = useState<any[]>([]);
   const [isLoadingAlternatives, setIsLoadingAlternatives] = useState(false);
+  const [currentPrice, setCurrentPrice] = useState<number | null>(null);
+  const [priceChange, setPriceChange] = useState<{value: number, percentage: string} | null>(null);
+  const [isLoadingPrice, setIsLoadingPrice] = useState(false);
 
   const getToken = async () => {
     if (!auth.currentUser) return null;
@@ -160,6 +168,12 @@ export default function TradingPanel() {
     const interval = setInterval(fetchBalance, 10000); // Update every 10 seconds
     return () => clearInterval(interval);
   }, []);
+
+  useEffect(() => {
+    if (selectedStockFromParent) {
+      setSelectedStock(selectedStockFromParent);
+    }
+  }, [selectedStockFromParent]);
 
   const handleAddFunds = async () => {
     try {
@@ -332,6 +346,66 @@ export default function TradingPanel() {
     handleTrade('buy');
   };
 
+  // Fetch stock price when a stock symbol is selected
+  useEffect(() => {
+    const fetchStockPrice = async () => {
+      if (!selectedStock) {
+        setCurrentPrice(null);
+        setPriceChange(null);
+        return;
+      }
+      
+      setIsLoadingPrice(true);
+      setError('');
+      
+      try {
+        const token = await getToken();
+        if (!token) {
+          setError('Authentication required');
+          setIsLoadingPrice(false);
+          return;
+        }
+        
+        const response = await fetch(`http://localhost:5001/api/market/quote?symbol=${selectedStock}`, {
+          headers: {
+            'Authorization': `Bearer ${token}`
+          }
+        });
+        
+        if (!response.ok) {
+          throw new Error('Failed to fetch stock price');
+        }
+        
+        const data = await response.json();
+        
+        if (data && data.c) {
+          setCurrentPrice(data.c);
+          
+          // Calculate price change
+          const changeValue = data.d || 0;
+          const changePercent = data.dp ? `${data.dp > 0 ? '+' : ''}${data.dp.toFixed(2)}%` : '+0.00%';
+          
+          setPriceChange({
+            value: changeValue,
+            percentage: changePercent
+          });
+        } else {
+          setCurrentPrice(0);
+          setPriceChange({value: 0, percentage: '+0.00%'});
+        }
+      } catch (error) {
+        console.error('Error fetching stock price:', error);
+        setError('Failed to fetch stock price');
+        setCurrentPrice(0);
+        setPriceChange({value: 0, percentage: '+0.00%'});
+      } finally {
+        setIsLoadingPrice(false);
+      }
+    };
+    
+    fetchStockPrice();
+  }, [selectedStock]);
+
   return (
     <Box sx={{ 
       p: 4, 
@@ -396,33 +470,35 @@ export default function TradingPanel() {
             ARIMA Model Analysis for {analysisResult?.symbol}
           </Typography>
         </DialogTitle>
-        <DialogContent sx={{ mt: 2 }}>
+        <DialogContent sx={{ mt: 2, color: '#ffffff' }}>
           {analysisResult && (
             <Box>
               <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
                 <Box>
-                  <Typography variant="h5">${analysisResult.current_price.toFixed(2)}</Typography>
-                  <Typography variant="body2" color="text.secondary">Current Price</Typography>
+                  <Typography variant="h5" sx={{ color: '#ffffff', fontWeight: 'bold' }}>${analysisResult.current_price.toFixed(2)}</Typography>
+                  <Typography variant="body2" color="#9e9e9e">Current Price</Typography>
                 </Box>
                 <Box sx={{ textAlign: 'center' }}>
                   <Typography variant="h6" sx={{ 
-                    color: analysisResult.expected_growth > 0 ? '#69f0ae' : '#ff5252',
+                    color: analysisResult.expected_growth > 0 ? '#00ffb3' : '#ff5252',
                     display: 'flex',
                     alignItems: 'center',
-                    justifyContent: 'center'
+                    justifyContent: 'center',
+                    fontWeight: 'bold'
                   }}>
                     {analysisResult.expected_growth > 0 ? <TrendingUpIcon fontSize="small" sx={{ mr: 0.5 }} /> : <TrendingDownIcon fontSize="small" sx={{ mr: 0.5 }} />}
                     {Math.abs(analysisResult.expected_growth).toFixed(2)}%
                   </Typography>
-                  <Typography variant="body2" color="text.secondary">Expected Change</Typography>
+                  <Typography variant="body2" color="#9e9e9e">Expected Change</Typography>
                 </Box>
                 <Box>
                   <Typography variant="h5" sx={{ 
-                    color: analysisResult.expected_growth > 0 ? '#69f0ae' : '#ff5252' 
+                    color: analysisResult.expected_growth > 0 ? '#00ffb3' : '#ff5252',
+                    fontWeight: 'bold'
                   }}>
-                    ${analysisResult.predicted_price.toFixed(2)}
+                    ${analysisResult.predicted_price ? analysisResult.predicted_price.toFixed(2) : (analysisResult.current_price * (1 + analysisResult.expected_growth / 100)).toFixed(2)}
                   </Typography>
-                  <Typography variant="body2" color="text.secondary">Predicted Price ({analysisResult.days} days)</Typography>
+                  <Typography variant="body2" color="#9e9e9e">Predicted Price ({analysisResult.days} days)</Typography>
                 </Box>
                 <Chip 
                   icon={analysisResult.is_good_buy ? <CheckCircleOutlineIcon /> : <CancelOutlinedIcon />} 
@@ -433,7 +509,7 @@ export default function TradingPanel() {
               </Box>
               
               <Box sx={{ mb: 3 }}>
-                <Typography variant="body1" sx={{ mb: 1, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                <Typography variant="body1" sx={{ mb: 1, display: 'flex', alignItems: 'center', justifyContent: 'space-between', color: '#ffffff' }}>
                   <span>Confidence:</span>
                   <Box sx={{ 
                     width: '60%', 
@@ -449,7 +525,7 @@ export default function TradingPanel() {
                       top: 0,
                       height: '100%',
                       width: `${analysisResult.confidence * 100}%`,
-                      bgcolor: analysisResult.confidence > 0.7 ? '#69f0ae' : 
+                      bgcolor: analysisResult.confidence > 0.7 ? '#00ffb3' : 
                               analysisResult.confidence > 0.4 ? '#ffb74d' : '#ff5252',
                       borderRadius: '4px'
                     }} />
@@ -457,15 +533,90 @@ export default function TradingPanel() {
                   <span>{(analysisResult.confidence * 100).toFixed(0)}%</span>
                 </Typography>
                 
-                <Typography variant="body1" sx={{ mb: 1 }}>
+                <Typography variant="body1" sx={{ mb: 1, color: '#ffffff' }}>
                   Total Cost: ${analysisResult.total_cost.toFixed(2)}
                 </Typography>
               </Box>
+
+              {/* Add a simple line chart visualization of the forecast */}
+              {analysisResult.forecast && analysisResult.forecast.length > 0 && (
+                <Box sx={{ height: 120, mb: 3, mt: 2 }}>
+                  <Typography variant="body2" color="#9e9e9e" sx={{ mb: 1 }}>
+                    Price Forecast (Next {analysisResult.days} Days)
+                  </Typography>
+                  <Box sx={{ 
+                    height: '100%', 
+                    display: 'flex', 
+                    alignItems: 'flex-end',
+                    position: 'relative'
+                  }}>
+                    {/* Draw the line chart */}
+                    <Box sx={{ 
+                      position: 'absolute',
+                      top: 0,
+                      left: 0,
+                      right: 0,
+                      bottom: 0,
+                      display: 'flex',
+                      alignItems: 'flex-end'
+                    }}>
+                      {analysisResult.forecast.map((price, index) => {
+                        const maxPrice = Math.max(...analysisResult.forecast);
+                        const minPrice = Math.min(...analysisResult.forecast);
+                        const range = maxPrice - minPrice;
+                        const height = range > 0 ? ((price - minPrice) / range) * 80 + 10 : 50;
+                        
+                        return (
+                          <Box 
+                            key={index}
+                            sx={{
+                              flex: 1,
+                              height: `${height}%`,
+                              backgroundColor: analysisResult.expected_growth > 0 ? '#00ffb3' : '#ff5252',
+                              opacity: 0.7,
+                              mx: 0.5,
+                              borderTopLeftRadius: 2,
+                              borderTopRightRadius: 2,
+                              position: 'relative',
+                              '&:hover': {
+                                opacity: 1,
+                                '& .tooltip': {
+                                  display: 'block'
+                                }
+                              }
+                            }}
+                          >
+                            <Box 
+                              className="tooltip"
+                              sx={{
+                                display: 'none',
+                                position: 'absolute',
+                                bottom: '100%',
+                                left: '50%',
+                                transform: 'translateX(-50%)',
+                                backgroundColor: 'rgba(0,0,0,0.8)',
+                                color: 'white',
+                                padding: '4px 8px',
+                                borderRadius: 1,
+                                fontSize: '0.7rem',
+                                whiteSpace: 'nowrap',
+                                zIndex: 10
+                              }}
+                            >
+                              ${price.toFixed(2)}
+                            </Box>
+                          </Box>
+                        );
+                      })}
+                    </Box>
+                  </Box>
+                </Box>
+              )}
               
               <Divider sx={{ my: 2, borderColor: 'rgba(255,255,255,0.1)' }} />
               
               <Box sx={{ mt: 3 }}>
-                <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+                <Typography variant="body2" color="#9e9e9e" sx={{ mb: 2 }}>
                   This analysis is based on historical data and ARIMA model predictions for the next {analysisResult.days} days. Past performance is not indicative of future results.
                 </Typography>
                 
@@ -595,14 +746,14 @@ export default function TradingPanel() {
           borderColor: 'rgba(255, 255, 255, 0.1)',
           boxShadow: '0 4px 6px rgba(0, 0, 0, 0.1)'
         }}>
-          <CardContent>
+          <CardContent sx={{ p: 2, '&:last-child': { pb: 2 } }}>
             <Typography variant="h6" sx={{ 
-              mb: 3, 
+              mb: 2, 
               color: '#69f0ae',
               fontWeight: 'bold',
-              fontSize: '1.2rem',
+              fontSize: '1.1rem',
               borderBottom: '2px solid rgba(105, 240, 174, 0.3)',
-              paddingBottom: '8px',
+              paddingBottom: '6px',
               display: 'flex',
               alignItems: 'center',
               gap: 1
@@ -614,8 +765,8 @@ export default function TradingPanel() {
             <Box sx={{ 
               bgcolor: 'rgba(26, 26, 26, 0.7)',
               borderRadius: 2,
-              p: 3,
-              mb: 3,
+              p: 2,
+              mb: 2,
               border: '1px solid rgba(255, 255, 255, 0.05)',
               boxShadow: 'inset 0 2px 10px rgba(0, 0, 0, 0.2)'
             }}>
@@ -633,10 +784,16 @@ export default function TradingPanel() {
                       <SearchIcon fontSize="small" />
                     </Box>
                   ),
+                  endAdornment: selectedStockFromParent && selectedStockFromParent === selectedStock ? (
+                    <Box component="span" sx={{ ml: 1, color: '#69f0ae', display: 'flex', alignItems: 'center' }}>
+                      <CheckCircleIcon fontSize="small" />
+                    </Box>
+                  ) : null,
                   sx: { 
                     color: 'white',
                     '& .MuiOutlinedInput-notchedOutline': {
-                      borderColor: 'rgba(255, 255, 255, 0.3)',
+                      borderColor: selectedStockFromParent && selectedStockFromParent === selectedStock ? 
+                        '#69f0ae' : 'rgba(255, 255, 255, 0.3)',
                     },
                     '&:hover .MuiOutlinedInput-notchedOutline': {
                       borderColor: 'rgba(105, 240, 174, 0.5)',
@@ -651,6 +808,7 @@ export default function TradingPanel() {
                 InputLabelProps={{
                   sx: { color: 'rgba(255, 255, 255, 0.7)' }
                 }}
+                size="small"
               />
               
               {selectedStock && (
@@ -669,11 +827,11 @@ export default function TradingPanel() {
                       Current Price
                     </Typography>
                     <Typography variant="h6" sx={{ color: '#fff', fontWeight: 'bold' }}>
-                      ${selectedStock === 'AAPL' ? '187.42' : 
-                         selectedStock === 'MSFT' ? '415.56' : 
-                         selectedStock === 'GOOGL' ? '142.89' : 
-                         selectedStock === 'AMZN' ? '178.75' : 
-                         selectedStock === 'META' ? '474.99' : '0.00'}
+                      {isLoadingPrice ? (
+                        <CircularProgress size={20} sx={{ color: '#69f0ae', mr: 1 }} />
+                      ) : (
+                        `$${currentPrice ? currentPrice.toFixed(2) : '0.00'}`
+                      )}
                     </Typography>
                   </Box>
                   <Box sx={{ textAlign: 'right' }}>
@@ -681,19 +839,16 @@ export default function TradingPanel() {
                       Daily Change
                     </Typography>
                     <Typography variant="body1" sx={{ 
-                      color: selectedStock === 'AAPL' ? '#ff5252' : '#69f0ae',
+                      color: priceChange && priceChange.value < 0 ? '#ff5252' : '#69f0ae',
                       fontWeight: 'medium',
                       display: 'flex',
                       alignItems: 'center',
                       justifyContent: 'flex-end'
                     }}>
-                      {selectedStock === 'AAPL' ? <ArrowDownwardIcon fontSize="small" sx={{ mr: 0.5 }} /> : 
-                                                  <ArrowUpwardIcon fontSize="small" sx={{ mr: 0.5 }} />}
-                      {selectedStock === 'AAPL' ? '-1.24%' : 
-                       selectedStock === 'MSFT' ? '+0.87%' : 
-                       selectedStock === 'GOOGL' ? '+1.32%' : 
-                       selectedStock === 'AMZN' ? '+2.15%' : 
-                       selectedStock === 'META' ? '+0.76%' : '+0.00%'}
+                      {priceChange && priceChange.value < 0 ? 
+                        <ArrowDownwardIcon fontSize="small" sx={{ mr: 0.5 }} /> : 
+                        <ArrowUpwardIcon fontSize="small" sx={{ mr: 0.5 }} />}
+                      {priceChange ? priceChange.percentage : '+0.00%'}
                     </Typography>
                   </Box>
                 </Box>
@@ -735,26 +890,12 @@ export default function TradingPanel() {
               />
               
               {selectedStock && shares && !isNaN(Number(shares)) && Number(shares) > 0 && (
-                <Box sx={{ 
-                  mt: 2,
-                  p: 2,
-                  borderRadius: 1.5,
-                  bgcolor: 'rgba(33, 150, 243, 0.05)',
-                  border: '1px dashed rgba(33, 150, 243, 0.3)',
-                  display: 'flex',
-                  justifyContent: 'space-between'
-                }}>
+                <Box sx={{ mt: 2, p: 2, bgcolor: 'rgba(255, 255, 255, 0.05)', borderRadius: 1 }}>
                   <Typography variant="body2" sx={{ color: 'rgba(255, 255, 255, 0.7)' }}>
-                    Estimated Total:
+                    Total Cost:
                   </Typography>
-                  <Typography variant="body1" sx={{ fontWeight: 'bold', color: '#2196f3' }}>
-                    ${(Number(shares) * (
-                      selectedStock === 'AAPL' ? 187.42 : 
-                      selectedStock === 'MSFT' ? 415.56 : 
-                      selectedStock === 'GOOGL' ? 142.89 : 
-                      selectedStock === 'AMZN' ? 178.75 : 
-                      selectedStock === 'META' ? 474.99 : 0
-                    )).toFixed(2)}
+                  <Typography variant="h6" sx={{ color: '#fff', fontWeight: 'bold' }}>
+                    ${(Number(shares) * (currentPrice || 0)).toFixed(2)}
                   </Typography>
                 </Box>
               )}
@@ -781,49 +922,53 @@ export default function TradingPanel() {
                         color: '#69f0ae',
                       },
                       '& .MuiSwitch-switchBase.Mui-checked + .MuiSwitch-track': {
-                        backgroundColor: 'rgba(105, 240, 174, 0.5)',
+                        backgroundColor: '#69f0ae',
                       },
                     }}
                   />
                 }
                 label={
-                  <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                    <Typography variant="body1" sx={{ mr: 1, fontWeight: 500, color: 'white' }}>Use ML Analysis</Typography>
-                    <Tooltip title="Analyze the stock using ARIMA model before buying to predict future performance" arrow placement="top">
-                      <InfoOutlinedIcon fontSize="small" sx={{ color: 'rgba(255, 255, 255, 0.7)' }} />
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                    <Typography variant="body2" sx={{ color: 'white' }}>
+                      Use ML Analysis
+                    </Typography>
+                    <Tooltip title="Analyze the stock using machine learning before buying to get a recommendation">
+                      <InfoOutlinedIcon fontSize="small" sx={{ color: 'rgba(255, 255, 255, 0.5)', fontSize: '16px' }} />
                     </Tooltip>
                   </Box>
                 }
+                sx={{ mt: 1, mb: 1 }}
               />
-              {useMLAnalysis && (
-                <FormControl variant="outlined" size="small" sx={{ ml: 2, minWidth: 120 }}>
-                  <InputLabel id="analysis-days-label" sx={{ color: 'rgba(255, 255, 255, 0.7)' }}>Days</InputLabel>
-                  <Select
-                    labelId="analysis-days-label"
-                    value={analysisDays}
-                    onChange={(e) => setAnalysisDays(Number(e.target.value))}
-                    label="Days"
-                    sx={{
-                      color: 'white',
-                      '.MuiOutlinedInput-notchedOutline': {
-                        borderColor: 'rgba(255, 255, 255, 0.3)',
-                      },
-                      '&:hover .MuiOutlinedInput-notchedOutline': {
-                        borderColor: 'rgba(105, 240, 174, 0.5)',
-                      },
-                      '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
-                        borderColor: '#69f0ae',
-                      }
-                    }}
-                  >
-                    <MenuItem value={7}>7 days</MenuItem>
-                    <MenuItem value={14}>14 days</MenuItem>
-                    <MenuItem value={30}>30 days</MenuItem>
-                    <MenuItem value={60}>60 days</MenuItem>
-                  </Select>
-                </FormControl>
-              )}
             </Box>
+            
+            {useMLAnalysis && (
+              <FormControl variant="outlined" size="small" sx={{ ml: 2, minWidth: 100 }}>
+                <InputLabel id="analysis-days-label" sx={{ color: 'rgba(255, 255, 255, 0.7)' }}>Days</InputLabel>
+                <Select
+                  labelId="analysis-days-label"
+                  value={analysisDays}
+                  onChange={(e) => setAnalysisDays(Number(e.target.value))}
+                  label="Days"
+                  sx={{
+                    color: 'white',
+                    '.MuiOutlinedInput-notchedOutline': {
+                      borderColor: 'rgba(255, 255, 255, 0.3)',
+                    },
+                    '&:hover .MuiOutlinedInput-notchedOutline': {
+                      borderColor: 'rgba(105, 240, 174, 0.5)',
+                    },
+                    '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
+                      borderColor: '#69f0ae',
+                    }
+                  }}
+                >
+                  <MenuItem value={7}>7 days</MenuItem>
+                  <MenuItem value={14}>14 days</MenuItem>
+                  <MenuItem value={30}>30 days</MenuItem>
+                  <MenuItem value={60}>60 days</MenuItem>
+                </Select>
+              </FormControl>
+            )}
             
             <Box sx={{ display: 'flex', gap: 2 }}>
               <Button 

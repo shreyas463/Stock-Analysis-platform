@@ -39,6 +39,7 @@ export default function Home() {
   const [cashBalance, setCashBalance] = useState<number>(0);
   const [stocksValue, setStocksValue] = useState<number>(0);
   const [portfolio, setPortfolio] = useState<any[]>([]);
+  const [refreshKey, setRefreshKey] = useState(0);
 
   // Function to reset to homepage view
   const resetToHomepage = () => {
@@ -107,6 +108,8 @@ export default function Home() {
       console.log("Portfolio value calculated:", calculatedStocksValue);
       setStocksValue(calculatedStocksValue);
       
+      // Force a refresh of the component
+      setRefreshKey(oldKey => oldKey + 1);
     } catch (error) {
       console.error('Error fetching portfolio data:', error);
     }

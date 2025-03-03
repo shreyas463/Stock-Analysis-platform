@@ -125,6 +125,7 @@ export default function TradingPanel({ selectedStockFromParent }: TradingPanelPr
   const [priceChange, setPriceChange] = useState<{value: number, percentage: string} | null>(null);
   const [isLoadingPrice, setIsLoadingPrice] = useState(false);
   const [selectedIndicator, setSelectedIndicator] = useState<string>('none');
+  const [refreshKey, setRefreshKey] = useState(0);
 
   const getToken = async () => {
     if (!auth.currentUser) return null;
@@ -153,7 +154,7 @@ export default function TradingPanel({ selectedStockFromParent }: TradingPanelPr
       
       setBalance(data.cash_balance || 0);
       
-      // Ensure portfolio is an array
+      // Ensure portfolio is an array and has data
       if (Array.isArray(data.portfolio)) {
         console.log("Setting portfolio with", data.portfolio.length, "positions");
         setPortfolio(data.portfolio);
@@ -163,6 +164,9 @@ export default function TradingPanel({ selectedStockFromParent }: TradingPanelPr
       }
       
       setTotalValue(data.total_value || 0);
+      
+      // Force a refresh of the component
+      setRefreshKey(oldKey => oldKey + 1);
     } catch (error) {
       console.error("Error fetching balance:", error);
       setError('Failed to fetch balance');
@@ -1257,14 +1261,14 @@ export default function TradingPanel({ selectedStockFromParent }: TradingPanelPr
           <Typography variant="h6" gutterBottom sx={{ color: '#69f0ae', fontWeight: 'medium', mb: 3 }}>
             Portfolio
           </Typography>
-          <TableContainer component={Paper} sx={{ bgcolor: '#1a1a1a', borderRadius: 2 }}>
+          <TableContainer component={Paper} sx={{ mt: 3, bgcolor: '#1a1a1a', borderRadius: 2 }}>
             <Table>
               <TableHead>
                 <TableRow>
-                  <TableCell sx={{ color: '#9e9e9e', fontWeight: 500, borderBottom: '1px solid rgba(255, 255, 255, 0.1)' }}>Symbol</TableCell>
-                  <TableCell align="right" sx={{ color: '#9e9e9e', fontWeight: 500, borderBottom: '1px solid rgba(255, 255, 255, 0.1)' }}>Shares</TableCell>
-                  <TableCell align="right" sx={{ color: '#9e9e9e', fontWeight: 500, borderBottom: '1px solid rgba(255, 255, 255, 0.1)' }}>Current Price</TableCell>
-                  <TableCell align="right" sx={{ color: '#9e9e9e', fontWeight: 500, borderBottom: '1px solid rgba(255, 255, 255, 0.1)' }}>Value</TableCell>
+                  <TableCell sx={{ fontWeight: 'bold', color: '#e0e0e0', borderBottom: '1px solid rgba(255, 255, 255, 0.05)' }}>Symbol</TableCell>
+                  <TableCell align="right" sx={{ fontWeight: 'bold', color: '#e0e0e0', borderBottom: '1px solid rgba(255, 255, 255, 0.05)' }}>Shares</TableCell>
+                  <TableCell align="right" sx={{ fontWeight: 'bold', color: '#e0e0e0', borderBottom: '1px solid rgba(255, 255, 255, 0.05)' }}>Current Price</TableCell>
+                  <TableCell align="right" sx={{ fontWeight: 'bold', color: '#e0e0e0', borderBottom: '1px solid rgba(255, 255, 255, 0.05)' }}>Value</TableCell>
                 </TableRow>
               </TableHead>
               <TableBody>
@@ -1279,7 +1283,7 @@ export default function TradingPanel({ selectedStockFromParent }: TradingPanelPr
                   ))
                 ) : (
                   <TableRow>
-                    <TableCell colSpan={4} align="center">
+                    <TableCell colSpan={4} align="center" sx={{ color: '#9e9e9e', py: 4 }}>
                       No positions in portfolio
                     </TableCell>
                   </TableRow>

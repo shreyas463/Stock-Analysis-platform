@@ -90,16 +90,23 @@ except Exception as e:
                     elif op == '<=' and doc_data[field] <= value:
                         filtered_docs.append(doc)
 
+            logger.info(
+                f"Collection {self.name} where {field} {op} {value} found {len(filtered_docs)} documents")
             return MockQuery(filtered_docs)
 
         def stream(self):
-            return list(self.documents.values())
+            docs = list(self.documents.values())
+            logger.info(
+                f"Collection {self.name} stream returning {len(docs)} documents")
+            return docs
 
         def add(self, data):
             doc_id = f"auto-id-{self.next_id}"
             self.next_id += 1
             doc = self.document(doc_id)
             doc.set(data)
+            logger.info(
+                f"Added document to {self.name} with ID {doc_id}: {data}")
             return doc
 
     class MockDocument:
@@ -112,9 +119,11 @@ except Exception as e:
                 self.data.update(data)
             else:
                 self.data = data.copy() if isinstance(data, dict) else data
+            logger.info(f"Document {self.id} set with data: {self.data}")
             return self
 
         def get(self):
+            logger.info(f"Getting document {self.id} with data: {self.data}")
             return self
 
         def to_dict(self):
@@ -123,6 +132,7 @@ except Exception as e:
         def update(self, data):
             if isinstance(self.data, dict) and isinstance(data, dict):
                 self.data.update(data)
+                logger.info(f"Updated document {self.id} with data: {data}")
             return self
 
     class MockQuery:
@@ -302,6 +312,7 @@ def get_balance(current_user):
             user_doc = db.collection('users').document(current_user.uid).get()
             user_data = user_doc.to_dict() or {}
             balance = user_data.get('balance', 0.0)
+            logger.info(f"User {current_user.uid} has balance: {balance}")
         except Exception as e:
             logger.error(f"Error fetching user balance: {str(e)}")
             balance = 0.0
@@ -324,19 +335,25 @@ def get_balance(current_user):
             logger.info(
                 f"Total documents in portfolios collection: {len(all_portfolios)}")
             for doc in all_portfolios:
-                logger.info(f"Portfolio document: {doc.to_dict()}")
+                logger.info(
+                    f"Portfolio document in collection: {doc.id} - {doc.to_dict()}")
 
             # Query for this user's portfolio
-            portfolio_query = portfolio_ref.where(
-                'user_id', '==', current_user.uid)
-            portfolio_docs = list(portfolio_query.stream())
+            logger.info(
+                f"Querying portfolios where user_id == {current_user.uid}")
+            user_portfolio_docs = []
+            for doc in all_portfolios:
+                doc_data = doc.to_dict()
+                if doc_data.get('user_id') == current_user.uid:
+                    user_portfolio_docs.append(doc)
 
             logger.info(
-                f"Found {len(portfolio_docs)} portfolio documents for user {current_user.uid}")
+                f"Found {len(user_portfolio_docs)} portfolio documents for user {current_user.uid}")
 
-            for doc in portfolio_docs:
+            for doc in user_portfolio_docs:
                 position = doc.to_dict()
-                logger.info(f"Processing portfolio position: {position}")
+                logger.info(
+                    f"Processing portfolio position: {doc.id} - {position}")
 
                 symbol = position.get('symbol', '')
                 shares = position.get('shares', 0)
@@ -508,13 +525,35 @@ def buy(current_user):
         # Add stock to user's portfolio or update existing position
         try:
             portfolio_ref = db.collection('portfolios')
-            portfolio_query = portfolio_ref.where(
-                'user_id', '==', current_user.uid).where('symbol', '==', symbol)
-            portfolio_docs = list(portfolio_query.stream())
 
-            if portfolio_docs:
+            # Log all portfolio documents before the query
+            all_portfolios = list(portfolio_ref.stream())
+            logger.info(
+                f"Before update: Total documents in portfolios collection: {len(all_portfolios)}")
+            for doc in all_portfolios:
+                logger.info(
+                    f"Before update: Portfolio document: {doc.to_dict()}")
+
+            # First query for user's documents
+            user_portfolio_query = portfolio_ref.where(
+                'user_id', '==', current_user.uid)
+            user_portfolio_docs = list(user_portfolio_query.stream())
+            logger.info(
+                f"Found {len(user_portfolio_docs)} portfolio documents for user {current_user.uid}")
+
+            # Then filter for the specific symbol
+            matching_docs = []
+            for doc in user_portfolio_docs:
+                doc_data = doc.to_dict()
+                if doc_data.get('symbol') == symbol:
+                    matching_docs.append(doc)
+
+            logger.info(
+                f"Found {len(matching_docs)} matching documents for symbol {symbol}")
+
+            if matching_docs:
                 # Update existing position
-                position_doc = portfolio_docs[0]
+                position_doc = matching_docs[0]
                 position_data = position_doc.to_dict()
                 existing_shares = position_data.get('shares', 0)
                 existing_cost = position_data.get('cost_basis', current_price)
@@ -524,6 +563,8 @@ def buy(current_user):
                 new_cost_basis = (existing_cost * existing_shares +
                                   current_price * shares) / new_shares
 
+                logger.info(
+                    f"Updating existing position: {position_doc.id} - {symbol} from {existing_shares} to {new_shares} shares")
                 portfolio_ref.document(position_doc.id).update({
                     'shares': new_shares,
                     'cost_basis': new_cost_basis,
@@ -532,7 +573,7 @@ def buy(current_user):
                 })
             else:
                 # Create new position
-                portfolio_ref.add({
+                new_position = {
                     'user_id': current_user.uid,
                     'symbol': symbol,
                     'shares': shares,
@@ -540,9 +581,24 @@ def buy(current_user):
                     'last_price': current_price,
                     'created_at': datetime.utcnow(),
                     'updated_at': datetime.utcnow()
-                })
+                }
+                logger.info(
+                    f"Creating new position: {symbol} with {shares} shares for user {current_user.uid}")
+                new_doc = portfolio_ref.add(new_position)
+                logger.info(f"Created new position with ID: {new_doc.id}")
+
+            # Log all portfolio documents after the update
+            all_portfolios = list(portfolio_ref.stream())
+            logger.info(
+                f"After update: Total documents in portfolios collection: {len(all_portfolios)}")
+            for doc in all_portfolios:
+                logger.info(
+                    f"After update: Portfolio document: {doc.to_dict()}")
+
         except Exception as e:
             logger.error(f"Error updating portfolio: {str(e)}")
+            import traceback
+            logger.error(traceback.format_exc())
             # Continue with transaction recording even if portfolio update fails
 
         # Record the transaction

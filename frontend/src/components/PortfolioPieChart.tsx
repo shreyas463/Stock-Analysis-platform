@@ -1,6 +1,6 @@
 'use client';
 
-import React from 'react';
+import React, { useEffect } from 'react';
 import { Box, Typography, Card, CardContent, useTheme } from '@mui/material';
 import { Doughnut } from 'react-chartjs-2';
 import { Chart as ChartJS, ArcElement, Tooltip, Legend } from 'chart.js';
@@ -26,13 +26,15 @@ const PortfolioPieChart: React.FC<PortfolioPieChartProps> = ({ cashBalance, stoc
   const cashPercentage = totalValue > 0 ? (cashBalanceValue / totalValue) * 100 : 100;
   const stocksPercentage = totalValue > 0 ? (stocksValueValue / totalValue) * 100 : 0;
   
-  console.log("Pie Chart Values:", {
-    cashBalance: cashBalanceValue,
-    stocksValue: stocksValueValue,
-    totalValue,
-    cashPercentage: cashPercentage.toFixed(2),
-    stocksPercentage: stocksPercentage.toFixed(2)
-  });
+  useEffect(() => {
+    console.log("Pie Chart Values:", {
+      cashBalance: cashBalanceValue,
+      stocksValue: stocksValueValue,
+      totalValue,
+      cashPercentage: cashPercentage.toFixed(2),
+      stocksPercentage: stocksPercentage.toFixed(2)
+    });
+  }, [cashBalanceValue, stocksValueValue, totalValue, cashPercentage, stocksPercentage]);
 
   const data = {
     labels: ['Cash', 'Stocks'],
@@ -74,9 +76,9 @@ const PortfolioPieChart: React.FC<PortfolioPieChartProps> = ({ cashBalance, stoc
   };
 
   return (
-    <Card sx={{ height: '100%', bgcolor: 'background.paper', borderRadius: 2, boxShadow: 3 }}>
+    <Card sx={{ height: '100%', bgcolor: '#1a1a1a', borderRadius: 2, boxShadow: 3 }}>
       <CardContent>
-        <Typography variant="h6" component="div" sx={{ mb: 2, color: 'text.primary', display: 'flex', alignItems: 'center' }}>
+        <Typography variant="h6" component="div" sx={{ mb: 2, color: '#e0e0e0', display: 'flex', alignItems: 'center' }}>
           <Box component="span" sx={{ 
             bgcolor: 'success.main', 
             width: 24, 
@@ -101,30 +103,30 @@ const PortfolioPieChart: React.FC<PortfolioPieChartProps> = ({ cashBalance, stoc
             transform: 'translate(-50%, -50%)', 
             textAlign: 'center' 
           }}>
-            <Typography variant="caption" sx={{ color: 'text.secondary' }}>Total Value</Typography>
-            <Typography variant="h6" sx={{ color: 'text.primary' }}>${totalValue.toFixed(2)}</Typography>
+            <Typography variant="caption" sx={{ color: '#9e9e9e' }}>Total Value</Typography>
+            <Typography variant="h6" sx={{ color: '#e0e0e0' }}>${totalValue.toFixed(2)}</Typography>
           </Box>
         </Box>
         
         <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
           <Box sx={{ display: 'flex', alignItems: 'center' }}>
             <Box sx={{ width: 12, height: 12, borderRadius: '50%', bgcolor: theme.palette.primary.main, mr: 1 }} />
-            <Typography variant="body2" sx={{ color: 'text.secondary' }}>Cash</Typography>
+            <Typography variant="body2" sx={{ color: '#9e9e9e' }}>Cash</Typography>
           </Box>
           <Box>
-            <Typography variant="body2" sx={{ color: 'text.secondary' }}>{cashPercentage.toFixed(2)}%</Typography>
-            <Typography variant="body2" sx={{ color: 'text.secondary' }}>${cashBalanceValue.toFixed(2)}</Typography>
+            <Typography variant="body2" sx={{ color: '#9e9e9e' }}>{cashPercentage.toFixed(2)}%</Typography>
+            <Typography variant="body2" sx={{ color: '#9e9e9e' }}>${cashBalanceValue.toFixed(2)}</Typography>
           </Box>
         </Box>
         
         <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
           <Box sx={{ display: 'flex', alignItems: 'center' }}>
             <Box sx={{ width: 12, height: 12, borderRadius: '50%', bgcolor: theme.palette.success.main, mr: 1 }} />
-            <Typography variant="body2" sx={{ color: 'text.secondary' }}>Stocks</Typography>
+            <Typography variant="body2" sx={{ color: '#9e9e9e' }}>Stocks</Typography>
           </Box>
           <Box>
-            <Typography variant="body2" sx={{ color: 'text.secondary' }}>{stocksPercentage.toFixed(2)}%</Typography>
-            <Typography variant="body2" sx={{ color: 'text.secondary' }}>${stocksValueValue.toFixed(2)}</Typography>
+            <Typography variant="body2" sx={{ color: '#9e9e9e' }}>{stocksPercentage.toFixed(2)}%</Typography>
+            <Typography variant="body2" sx={{ color: '#9e9e9e' }}>${stocksValueValue.toFixed(2)}</Typography>
           </Box>
         </Box>
       </CardContent>

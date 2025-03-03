@@ -62,14 +62,6 @@ const TopGainers: React.FC<TopGainersProps> = ({ maxItems }) => {
 
   return (
     <Box>
-      {/* Title with icon */}
-      <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
-        <ShowChartIcon sx={{ color: '#69f0ae', mr: 1 }} />
-        <Typography variant="h6" sx={{ color: '#e0e0e0', fontWeight: 'bold' }}>
-          Top Performers
-        </Typography>
-      </Box>
-      
       {/* Stocks list */}
       <Box>
         {loading ? (

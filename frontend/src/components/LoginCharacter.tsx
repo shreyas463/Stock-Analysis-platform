@@ -6,11 +6,20 @@ import { Box } from '@mui/material';
 interface LoginCharacterProps {
   isPasswordFocused: boolean;
   isTyping: boolean;
+  isEmailFocused?: boolean;
 }
 
-const LoginCharacter: React.FC<LoginCharacterProps> = ({ isPasswordFocused, isTyping }) => {
+const LoginCharacter: React.FC<LoginCharacterProps> = ({ 
+  isPasswordFocused, 
+  isTyping, 
+  isEmailFocused 
+}) => {
   // Determine the character's expression based on the input state
-  const eyesOpen = !isPasswordFocused || !isTyping;
+  // Only close eyes when typing in password field
+  const eyesClosed = isPasswordFocused && isTyping;
+  
+  // Determine if the character should look interested (when typing email/username)
+  const lookingAtTyping = isTyping && !isPasswordFocused;
   
   return (
     <Box
@@ -50,48 +59,77 @@ const LoginCharacter: React.FC<LoginCharacterProps> = ({ isPasswordFocused, isTy
         justifyContent: 'space-between', 
         width: '70px', 
         position: 'relative',
-        top: '-10px'
+        top: lookingAtTyping ? '-5px' : '-10px', // Move eyes down when looking at typing
+        transition: 'top 0.3s ease',
+        animation: lookingAtTyping ? 'lookAround 3s infinite' : 'none',
+        '@keyframes lookAround': {
+          '0%': { transform: 'translateY(0)' },
+          '25%': { transform: 'translateY(2px) translateX(-1px)' },
+          '50%': { transform: 'translateY(3px)' },
+          '75%': { transform: 'translateY(2px) translateX(1px)' },
+          '100%': { transform: 'translateY(0)' },
+        }
       }}>
-        {eyesOpen ? (
-          // Open eyes
+        {!eyesClosed ? (
+          // Open eyes - with different positions based on focus
           <>
             <Box sx={{ 
               width: '20px', 
-              height: '20px', 
+              height: lookingAtTyping ? '18px' : '20px', // Slightly squint when looking down
               borderRadius: '50%', 
               backgroundColor: '#000',
               position: 'relative',
+              transition: 'all 0.3s ease',
               '&::after': {
                 content: '""',
                 position: 'absolute',
-                top: '4px',
-                right: '4px',
+                top: lookingAtTyping ? '10px' : '4px', // Move pupil down significantly when typing
+                right: lookingAtTyping ? '3px' : '4px',
                 width: '6px',
                 height: '6px',
                 borderRadius: '50%',
                 backgroundColor: '#fff',
+                transition: 'all 0.2s ease',
+                animation: lookingAtTyping ? 'movePupilDown 1.5s infinite' : 'none',
+                '@keyframes movePupilDown': {
+                  '0%': { top: '9px', right: '3px' },
+                  '25%': { top: '10px', right: '2px' },
+                  '50%': { top: '11px', right: '3px' },
+                  '75%': { top: '10px', right: '4px' },
+                  '100%': { top: '9px', right: '3px' },
+                }
               }
             }} />
             <Box sx={{ 
               width: '20px', 
-              height: '20px', 
+              height: lookingAtTyping ? '18px' : '20px', // Slightly squint when looking down
               borderRadius: '50%', 
               backgroundColor: '#000',
               position: 'relative',
+              transition: 'all 0.3s ease',
               '&::after': {
                 content: '""',
                 position: 'absolute',
-                top: '4px',
-                right: '4px',
+                top: lookingAtTyping ? '10px' : '4px', // Move pupil down significantly when typing
+                right: lookingAtTyping ? '3px' : '4px',
                 width: '6px',
                 height: '6px',
                 borderRadius: '50%',
                 backgroundColor: '#fff',
+                transition: 'all 0.2s ease',
+                animation: lookingAtTyping ? 'movePupilDown 1.5s infinite' : 'none',
+                '@keyframes movePupilDown': {
+                  '0%': { top: '9px', right: '3px' },
+                  '25%': { top: '10px', right: '2px' },
+                  '50%': { top: '11px', right: '3px' },
+                  '75%': { top: '10px', right: '4px' },
+                  '100%': { top: '9px', right: '3px' },
+                }
               }
             }} />
           </>
         ) : (
-          // Closed eyes (horizontal lines)
+          // Closed eyes when typing password
           <>
             <Box sx={{ 
               width: '20px', 
@@ -111,34 +149,16 @@ const LoginCharacter: React.FC<LoginCharacterProps> = ({ isPasswordFocused, isTy
         )}
       </Box>
 
-      {/* Mouth */}
+      {/* Mouth - changes based on state */}
       <Box sx={{ 
-        width: '15px', 
-        height: '15px', 
+        width: eyesClosed ? '10px' : (lookingAtTyping ? '12px' : '15px'), 
+        height: eyesClosed ? '10px' : (lookingAtTyping ? '12px' : '15px'), 
         borderRadius: '50%', 
-        backgroundColor: '#FFA000',
+        backgroundColor: eyesClosed ? '#E65100' : (lookingAtTyping ? '#FF8F00' : '#FFA000'), // Different color when looking
         position: 'relative',
-        top: '10px'
+        top: lookingAtTyping ? '15px' : '10px', // Move mouth down when looking down
+        transition: 'all 0.3s ease',
       }} />
-
-      {/* Animation for typing */}
-      {isTyping && !isPasswordFocused && (
-        <Box
-          sx={{
-            position: 'absolute',
-            top: '-30px',
-            right: '-20px',
-            fontSize: '24px',
-            animation: 'bounce 0.5s infinite alternate',
-            '@keyframes bounce': {
-              from: { transform: 'translateY(0)' },
-              to: { transform: 'translateY(-10px)' }
-            }
-          }}
-        >
-          👀
-        </Box>
-      )}
     </Box>
   );
 };

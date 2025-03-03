@@ -17,8 +17,7 @@ import {
   IconButton,
   InputAdornment,
   Paper,
-  Grid,
-  Chip
+  Grid
 } from '@mui/material';
 import { Visibility, VisibilityOff } from '@mui/icons-material';
 import AnimatedCandlestickBackground from '@/components/AnimatedCandlestickBackground';
@@ -284,6 +283,7 @@ export default function LoginPage() {
             <LoginCharacter 
               isPasswordFocused={isPasswordFocused} 
               isTyping={isTyping} 
+              isEmailFocused={isEmailFocused}
             />
             
             {error && (
@@ -482,7 +482,7 @@ export default function LoginPage() {
                   isLogin ? 'Sign In' : 'Sign Up'
                 )}
               </Button>
-              <Box sx={{ display: 'flex', justifyContent: 'space-between', width: '100%' }}>
+              <Box sx={{ textAlign: 'center' }}>
                 <Link 
                   href="#" 
                   variant="body2" 
@@ -501,85 +501,31 @@ export default function LoginPage() {
                 >
                   {isLogin ? "Don't have an account? Sign Up" : "Already have an account? Sign In"}
                 </Link>
-                {isLogin && (
-                  <Link 
-                    href="#" 
-                    variant="body2"
-                    onClick={(e) => e.preventDefault()}
-                    sx={{ 
-                      color: '#9e9e9e',
-                      textDecoration: 'none',
-                      '&:hover': {
-                        color: '#69f0ae',
-                        textDecoration: 'underline',
-                      }
-                    }}
-                  >
-                    Forgot password?
-                  </Link>
-                )}
               </Box>
             </Box>
           </Box>
-          
-          {/* Info Section */}
+
+          {/* Crypto Widget */}
           <Box
             sx={{
-              display: { xs: 'none', md: 'flex' },
-              flexDirection: 'column',
-              justifyContent: 'center',
-              maxWidth: '500px',
+              display: { xs: 'none', md: 'block' },
+              width: '100%',
+              maxWidth: '450px',
+              position: 'fixed',
+              top: '40px',
+              right: '10px',
+              bottom: '20px',
+              zIndex: 9999,
+              overflowY: 'auto',
+              height: 'calc(100vh - 60px)',
+              '& > div': {
+                height: '100%',
+                display: 'flex',
+                flexDirection: 'column'
+              }
             }}
           >
-            <Typography 
-              variant="h3" 
-              sx={{ 
-                color: 'white', 
-                fontWeight: 700, 
-                mb: 2,
-                textShadow: '0 2px 10px rgba(0, 0, 0, 0.5)',
-              }}
-            >
-              Trade Smarter, <br />Not Harder
-            </Typography>
-            <Typography 
-              variant="h6" 
-              sx={{ 
-                color: '#9e9e9e', 
-                mb: 4,
-                lineHeight: 1.6,
-              }}
-            >
-              Join thousands of traders using Stockerr to analyze, track, and trade stocks with confidence.
-            </Typography>
-            
-            <Box sx={{ mb: 4 }}>
-              <CryptoPriceWidget />
-            </Box>
-            
-            <Box
-              sx={{
-                display: 'flex',
-                flexWrap: 'wrap',
-                gap: 2,
-                mb: 4,
-              }}
-            >
-              {['Real-time Data', 'Smart Analysis', 'Portfolio Tracking', 'Trading Simulation'].map((feature) => (
-                <Chip
-                  key={feature}
-                  label={feature}
-                  sx={{
-                    bgcolor: 'rgba(105, 240, 174, 0.1)',
-                    color: '#69f0ae',
-                    border: '1px solid rgba(105, 240, 174, 0.2)',
-                    '&:hover': {
-                      bgcolor: 'rgba(105, 240, 174, 0.2)',
-                    },
-                  }}
-                />
-              ))}
-            </Box>
+            <CryptoPriceWidget />
           </Box>
         </Box>
       </Container>

@@ -78,7 +78,7 @@ const PortfolioPieChart: React.FC<PortfolioPieChartProps> = ({ cashBalance, stoc
   return (
     <Card sx={{ height: '100%', bgcolor: '#1a1a1a', borderRadius: 2, boxShadow: 3 }}>
       <CardContent>
-        <Typography variant="h6" component="div" sx={{ mb: 2, color: '#e0e0e0', display: 'flex', alignItems: 'center' }}>
+        <Typography variant="h6" component="div" sx={{ mb: 2, color: '#ffffff', display: 'flex', alignItems: 'center', fontWeight: 'bold' }}>
           <Box component="span" sx={{ 
             bgcolor: 'success.main', 
             width: 24, 
@@ -103,30 +103,30 @@ const PortfolioPieChart: React.FC<PortfolioPieChartProps> = ({ cashBalance, stoc
             transform: 'translate(-50%, -50%)', 
             textAlign: 'center' 
           }}>
-            <Typography variant="caption" sx={{ color: '#9e9e9e' }}>Total Value</Typography>
-            <Typography variant="h6" sx={{ color: '#e0e0e0' }}>${totalValue.toFixed(2)}</Typography>
+            <Typography variant="caption" sx={{ color: '#cccccc', fontWeight: 'medium' }}>Total Value</Typography>
+            <Typography variant="h6" sx={{ color: '#ffffff', fontWeight: 'bold' }}>${totalValue.toFixed(2)}</Typography>
           </Box>
         </Box>
         
         <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
           <Box sx={{ display: 'flex', alignItems: 'center' }}>
             <Box sx={{ width: 12, height: 12, borderRadius: '50%', bgcolor: theme.palette.primary.main, mr: 1 }} />
-            <Typography variant="body2" sx={{ color: '#9e9e9e' }}>Cash</Typography>
+            <Typography variant="body2" sx={{ color: '#ffffff' }}>Cash</Typography>
           </Box>
           <Box>
-            <Typography variant="body2" sx={{ color: '#9e9e9e' }}>{cashPercentage.toFixed(2)}%</Typography>
-            <Typography variant="body2" sx={{ color: '#9e9e9e' }}>${cashBalanceValue.toFixed(2)}</Typography>
+            <Typography variant="body2" sx={{ color: '#ffffff', fontWeight: 'medium' }}>{cashPercentage.toFixed(2)}%</Typography>
+            <Typography variant="body2" sx={{ color: '#69f0ae' }}>${cashBalanceValue.toFixed(2)}</Typography>
           </Box>
         </Box>
         
         <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
           <Box sx={{ display: 'flex', alignItems: 'center' }}>
             <Box sx={{ width: 12, height: 12, borderRadius: '50%', bgcolor: theme.palette.success.main, mr: 1 }} />
-            <Typography variant="body2" sx={{ color: '#9e9e9e' }}>Stocks</Typography>
+            <Typography variant="body2" sx={{ color: '#ffffff' }}>Stocks</Typography>
           </Box>
           <Box>
-            <Typography variant="body2" sx={{ color: '#9e9e9e' }}>{stocksPercentage.toFixed(2)}%</Typography>
-            <Typography variant="body2" sx={{ color: '#9e9e9e' }}>${stocksValueValue.toFixed(2)}</Typography>
+            <Typography variant="body2" sx={{ color: '#ffffff', fontWeight: 'medium' }}>{stocksPercentage.toFixed(2)}%</Typography>
+            <Typography variant="body2" sx={{ color: '#69f0ae' }}>${stocksValueValue.toFixed(2)}</Typography>
           </Box>
         </Box>
       </CardContent>

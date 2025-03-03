@@ -31,6 +31,7 @@ import {
   MenuItem,
   InputLabel,
   FormControl,
+  Grid,
 } from '@mui/material';
 import { useTheme } from '@mui/material/styles';
 import { auth } from '@/firebase/config';
@@ -55,6 +56,7 @@ import RecommendIcon from '@mui/icons-material/Recommend';
 import WarningAmberIcon from '@mui/icons-material/WarningAmber';
 import CloseIcon from '@mui/icons-material/Close';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
+import TimelineIcon from '@mui/icons-material/Timeline';
 
 interface PortfolioPosition {
   symbol: string;
@@ -76,13 +78,24 @@ interface Transaction {
 interface StockAnalysis {
   symbol: string;
   current_price: number;
-  predicted_price: number;
+  predicted_price?: number;
   total_cost: number;
   is_good_buy: boolean;
   expected_growth: number;
   confidence: number;
   forecast: number[];
   days: number;
+  indicator?: {
+    type: string;
+    values: number[];
+    recommendation: string;
+    description: string;
+    middle_band?: number[];
+    upper_band?: number[];
+    lower_band?: number[];
+    percent_b?: number;
+    atr_percentage?: number;
+  };
 }
 
 interface TradingPanelProps {
@@ -111,6 +124,7 @@ export default function TradingPanel({ selectedStockFromParent }: TradingPanelPr
   const [currentPrice, setCurrentPrice] = useState<number | null>(null);
   const [priceChange, setPriceChange] = useState<{value: number, percentage: string} | null>(null);
   const [isLoadingPrice, setIsLoadingPrice] = useState(false);
+  const [selectedIndicator, setSelectedIndicator] = useState<string>('none');
 
   const getToken = async () => {
     if (!auth.currentUser) return null;
@@ -135,10 +149,22 @@ export default function TradingPanel({ selectedStockFromParent }: TradingPanelPr
         }
       });
       const data = await response.json();
-      setBalance(data.cash_balance);
-      setPortfolio(data.portfolio);
-      setTotalValue(data.total_value);
+      console.log("TradingPanel received balance data:", data);
+      
+      setBalance(data.cash_balance || 0);
+      
+      // Ensure portfolio is an array
+      if (Array.isArray(data.portfolio)) {
+        console.log("Setting portfolio with", data.portfolio.length, "positions");
+        setPortfolio(data.portfolio);
+      } else {
+        console.log("Portfolio data is not an array:", data.portfolio);
+        setPortfolio([]);
+      }
+      
+      setTotalValue(data.total_value || 0);
     } catch (error) {
+      console.error("Error fetching balance:", error);
       setError('Failed to fetch balance');
     }
   };
@@ -255,7 +281,8 @@ export default function TradingPanel({ selectedStockFromParent }: TradingPanelPr
             symbol: selectedStock,
             shares: parseFloat(shares),
             analyze_first: true,
-            days: analysisDays // Send the selected days for analysis
+            days: analysisDays, // Send the selected days for analysis
+            indicator: selectedIndicator // Send the selected technical indicator
           })
         });
         
@@ -404,7 +431,25 @@ export default function TradingPanel({ selectedStockFromParent }: TradingPanelPr
     };
     
     fetchStockPrice();
+    
+    // Set up interval to refresh the price every 10 seconds
+    const intervalId = setInterval(fetchStockPrice, 10000);
+    
+    // Clean up interval on unmount or when selectedStock changes
+    return () => clearInterval(intervalId);
   }, [selectedStock]);
+
+  // Calculate total cost when shares or current price changes
+  useEffect(() => {
+    if (currentPrice && shares && !isNaN(parseFloat(shares))) {
+      const totalCost = currentPrice * parseFloat(shares);
+      setAnalysisResult(prev => prev ? {
+        ...prev,
+        current_price: currentPrice,
+        total_cost: totalCost
+      } : null);
+    }
+  }, [currentPrice, shares]);
 
   return (
     <Box sx={{ 
@@ -613,6 +658,128 @@ export default function TradingPanel({ selectedStockFromParent }: TradingPanelPr
                 </Box>
               )}
               
+              {/* Technical Indicator Section */}
+              {analysisResult?.indicator && (
+                <Box sx={{ mt: 3, mb: 3 }}>
+                  <Divider sx={{ my: 2, borderColor: 'rgba(255,255,255,0.1)' }} />
+                  
+                  <Typography variant="subtitle1" sx={{ 
+                    display: 'flex', 
+                    alignItems: 'center', 
+                    gap: 1,
+                    mb: 2 
+                  }}>
+                    <ShowChartIcon color="primary" />
+                    {analysisResult?.indicator?.type} Analysis
+                  </Typography>
+                  
+                  <Box sx={{ 
+                    display: 'flex', 
+                    alignItems: 'center', 
+                    justifyContent: 'space-between',
+                    mb: 2
+                  }}>
+                    <Chip 
+                      label={analysisResult?.indicator?.recommendation || 'Hold'} 
+                      color={
+                        analysisResult?.indicator?.recommendation?.includes('Buy') ? 'success' :
+                        analysisResult?.indicator?.recommendation?.includes('Sell') ? 'error' :
+                        'warning'
+                      }
+                      sx={{ fontWeight: 'bold' }}
+                    />
+                    <Typography variant="body2" color="#9e9e9e">
+                      {analysisResult?.indicator?.description}
+                    </Typography>
+                  </Box>
+                  
+                  {/* Simple visualization of the indicator values */}
+                  {analysisResult?.indicator?.values && analysisResult?.indicator?.values.length > 0 && (
+                    <Box sx={{ height: 80, mb: 2 }}>
+                      <Box sx={{ 
+                        height: '100%', 
+                        display: 'flex', 
+                        alignItems: 'flex-end',
+                        position: 'relative'
+                      }}>
+                        {analysisResult?.indicator?.values.map((value, index) => {
+                          // Calculate relative height based on min/max values
+                          const maxValue = Math.max(...analysisResult?.indicator?.values || []);
+                          const minValue = Math.min(...analysisResult?.indicator?.values || []);
+                          const range = maxValue - minValue;
+                          const height = range > 0 ? ((value - minValue) / range) * 70 + 10 : 50;
+                          
+                          // Determine color based on indicator type
+                          let color = '#00ffb3';
+                          if (analysisResult?.indicator?.type === 'RSI') {
+                            // Red if overbought, green if oversold, yellow otherwise
+                            color = value > 70 ? '#ff5252' : value < 30 ? '#00ffb3' : '#ffb74d';
+                          } else if (analysisResult?.indicator?.type === 'MACD') {
+                            // Red if negative, green if positive
+                            color = value < 0 ? '#ff5252' : '#00ffb3';
+                          }
+                          
+                          return (
+                            <Box 
+                              key={index}
+                              sx={{
+                                flex: 1,
+                                height: `${height}%`,
+                                backgroundColor: color,
+                                opacity: 0.7,
+                                mx: 0.5,
+                                borderTopLeftRadius: 2,
+                                borderTopRightRadius: 2,
+                                position: 'relative',
+                                '&:hover': {
+                                  opacity: 1,
+                                  '& .tooltip': {
+                                    display: 'block'
+                                  }
+                                }
+                              }}
+                            >
+                              <Box 
+                                className="tooltip"
+                                sx={{
+                                  display: 'none',
+                                  position: 'absolute',
+                                  bottom: '100%',
+                                  left: '50%',
+                                  transform: 'translateX(-50%)',
+                                  backgroundColor: 'rgba(0,0,0,0.8)',
+                                  color: 'white',
+                                  padding: '4px 8px',
+                                  borderRadius: 1,
+                                  fontSize: '0.7rem',
+                                  whiteSpace: 'nowrap',
+                                  zIndex: 10
+                                }}
+                              >
+                                {value.toFixed(2)}
+                              </Box>
+                            </Box>
+                          );
+                        })}
+                      </Box>
+                    </Box>
+                  )}
+                  
+                  {/* Additional data for specific indicators */}
+                  {analysisResult?.indicator?.type === 'Bollinger Bands' && analysisResult?.indicator?.percent_b !== undefined && (
+                    <Typography variant="body2" color="#9e9e9e">
+                      Percent B: {(analysisResult?.indicator?.percent_b * 100).toFixed(2)}%
+                    </Typography>
+                  )}
+                  
+                  {analysisResult?.indicator?.type === 'ATR' && analysisResult?.indicator?.atr_percentage !== undefined && (
+                    <Typography variant="body2" color="#9e9e9e">
+                      ATR Percentage: {analysisResult?.indicator?.atr_percentage.toFixed(2)}% of price
+                    </Typography>
+                  )}
+                </Box>
+              )}
+              
               <Divider sx={{ my: 2, borderColor: 'rgba(255,255,255,0.1)' }} />
               
               <Box sx={{ mt: 3 }}>
@@ -811,6 +978,7 @@ export default function TradingPanel({ selectedStockFromParent }: TradingPanelPr
                 size="small"
               />
               
+              {/* Display current price if available */}
               {selectedStock && (
                 <Box sx={{ 
                   display: 'flex', 
@@ -889,13 +1057,24 @@ export default function TradingPanel({ selectedStockFromParent }: TradingPanelPr
                 }}
               />
               
-              {selectedStock && shares && !isNaN(Number(shares)) && Number(shares) > 0 && (
-                <Box sx={{ mt: 2, p: 2, bgcolor: 'rgba(255, 255, 255, 0.05)', borderRadius: 1 }}>
-                  <Typography variant="body2" sx={{ color: 'rgba(255, 255, 255, 0.7)' }}>
+              {/* Display total cost if both stock and shares are selected */}
+              {selectedStock && shares && currentPrice && !isNaN(parseFloat(shares)) && (
+                <Box sx={{ 
+                  display: 'flex', 
+                  alignItems: 'center', 
+                  justifyContent: 'space-between',
+                  bgcolor: 'rgba(255, 255, 255, 0.05)',
+                  p: 2,
+                  borderRadius: 1
+                }}>
+                  <Typography variant="body1" sx={{ color: '#fff' }}>
                     Total Cost:
                   </Typography>
-                  <Typography variant="h6" sx={{ color: '#fff', fontWeight: 'bold' }}>
-                    ${(Number(shares) * (currentPrice || 0)).toFixed(2)}
+                  <Typography variant="body1" sx={{ 
+                    color: '#4caf50',
+                    fontWeight: 'bold'
+                  }}>
+                    ${(currentPrice * parseFloat(shares)).toFixed(2)}
                   </Typography>
                 </Box>
               )}
@@ -942,32 +1121,89 @@ export default function TradingPanel({ selectedStockFromParent }: TradingPanelPr
             </Box>
             
             {useMLAnalysis && (
-              <FormControl variant="outlined" size="small" sx={{ ml: 2, minWidth: 100 }}>
-                <InputLabel id="analysis-days-label" sx={{ color: 'rgba(255, 255, 255, 0.7)' }}>Days</InputLabel>
-                <Select
-                  labelId="analysis-days-label"
-                  value={analysisDays}
-                  onChange={(e) => setAnalysisDays(Number(e.target.value))}
-                  label="Days"
-                  sx={{
-                    color: 'white',
-                    '.MuiOutlinedInput-notchedOutline': {
-                      borderColor: 'rgba(255, 255, 255, 0.3)',
-                    },
-                    '&:hover .MuiOutlinedInput-notchedOutline': {
-                      borderColor: 'rgba(105, 240, 174, 0.5)',
-                    },
-                    '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
-                      borderColor: '#69f0ae',
-                    }
-                  }}
-                >
-                  <MenuItem value={7}>7 days</MenuItem>
-                  <MenuItem value={14}>14 days</MenuItem>
-                  <MenuItem value={30}>30 days</MenuItem>
-                  <MenuItem value={60}>60 days</MenuItem>
-                </Select>
-              </FormControl>
+              <>
+                <Box sx={{ 
+                  mt: 2, 
+                  mb: 2, 
+                  p: 2, 
+                  borderRadius: 2, 
+                  bgcolor: 'rgba(26, 26, 26, 0.7)',
+                  border: '1px solid rgba(255, 255, 255, 0.05)',
+                }}>
+                  <Typography variant="body2" sx={{ 
+                    color: 'rgba(255, 255, 255, 0.7)', 
+                    mb: 2,
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 1
+                  }}>
+                    <TimelineIcon fontSize="small" sx={{ color: '#69f0ae' }} />
+                    Analysis Options
+                  </Typography>
+                  
+                  <Grid container spacing={2}>
+                    <Grid item xs={12} sm={6}>
+                      <FormControl variant="outlined" size="small" sx={{ width: '100%' }}>
+                        <InputLabel id="analysis-days-label" sx={{ color: 'rgba(255, 255, 255, 0.7)' }}>Forecast Period</InputLabel>
+                        <Select
+                          labelId="analysis-days-label"
+                          value={analysisDays}
+                          onChange={(e) => setAnalysisDays(Number(e.target.value))}
+                          label="Forecast Period"
+                          sx={{
+                            color: 'white',
+                            '.MuiOutlinedInput-notchedOutline': {
+                              borderColor: 'rgba(255, 255, 255, 0.3)',
+                            },
+                            '&:hover .MuiOutlinedInput-notchedOutline': {
+                              borderColor: 'rgba(105, 240, 174, 0.5)',
+                            },
+                            '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
+                              borderColor: '#69f0ae',
+                            }
+                          }}
+                        >
+                          <MenuItem value={7}>7 days</MenuItem>
+                          <MenuItem value={14}>14 days</MenuItem>
+                          <MenuItem value={30}>30 days</MenuItem>
+                          <MenuItem value={60}>60 days</MenuItem>
+                        </Select>
+                      </FormControl>
+                    </Grid>
+                    
+                    <Grid item xs={12} sm={6}>
+                      <FormControl variant="outlined" size="small" sx={{ width: '100%' }}>
+                        <InputLabel id="indicator-select-label" sx={{ color: 'rgba(255, 255, 255, 0.7)' }}>Technical Indicator</InputLabel>
+                        <Select
+                          labelId="indicator-select-label"
+                          value={selectedIndicator}
+                          onChange={(e) => setSelectedIndicator(e.target.value)}
+                          label="Technical Indicator"
+                          sx={{
+                            color: 'white',
+                            '.MuiOutlinedInput-notchedOutline': {
+                              borderColor: 'rgba(255, 255, 255, 0.3)',
+                            },
+                            '&:hover .MuiOutlinedInput-notchedOutline': {
+                              borderColor: 'rgba(105, 240, 174, 0.5)',
+                            },
+                            '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
+                              borderColor: '#69f0ae',
+                            }
+                          }}
+                        >
+                          <MenuItem value="none">None</MenuItem>
+                          <MenuItem value="sma">Simple Moving Average (SMA)</MenuItem>
+                          <MenuItem value="macd">MACD</MenuItem>
+                          <MenuItem value="rsi">Relative Strength Index (RSI)</MenuItem>
+                          <MenuItem value="bollinger">Bollinger Bands</MenuItem>
+                          <MenuItem value="atr">Average True Range (ATR)</MenuItem>
+                        </Select>
+                      </FormControl>
+                    </Grid>
+                  </Grid>
+                </Box>
+              </>
             )}
             
             <Box sx={{ display: 'flex', gap: 2 }}>
@@ -1032,17 +1268,20 @@ export default function TradingPanel({ selectedStockFromParent }: TradingPanelPr
                 </TableRow>
               </TableHead>
               <TableBody>
-                {Array.isArray(portfolio) && portfolio.map((position) => (
-                  <TableRow key={position.symbol}>
-                    <TableCell sx={{ color: '#e0e0e0', borderBottom: '1px solid rgba(255, 255, 255, 0.05)' }}>{position.symbol}</TableCell>
-                    <TableCell align="right" sx={{ color: '#e0e0e0', borderBottom: '1px solid rgba(255, 255, 255, 0.05)' }}>{position.shares}</TableCell>
-                    <TableCell align="right" sx={{ color: '#e0e0e0', borderBottom: '1px solid rgba(255, 255, 255, 0.05)' }}>${position.current_price.toFixed(2)}</TableCell>
-                    <TableCell align="right" sx={{ color: '#69f0ae', borderBottom: '1px solid rgba(255, 255, 255, 0.05)' }}>${position.position_value.toFixed(2)}</TableCell>
-                  </TableRow>
-                ))}
-                {(!Array.isArray(portfolio) || portfolio.length === 0) && (
+                {Array.isArray(portfolio) && portfolio.length > 0 ? (
+                  portfolio.map((position, index) => (
+                    <TableRow key={index}>
+                      <TableCell sx={{ color: '#e0e0e0', borderBottom: '1px solid rgba(255, 255, 255, 0.05)' }}>{position.symbol}</TableCell>
+                      <TableCell align="right" sx={{ color: '#e0e0e0', borderBottom: '1px solid rgba(255, 255, 255, 0.05)' }}>{position.shares}</TableCell>
+                      <TableCell align="right" sx={{ color: '#e0e0e0', borderBottom: '1px solid rgba(255, 255, 255, 0.05)' }}>${position.current_price.toFixed(2)}</TableCell>
+                      <TableCell align="right" sx={{ color: '#69f0ae', borderBottom: '1px solid rgba(255, 255, 255, 0.05)' }}>${position.position_value.toFixed(2)}</TableCell>
+                    </TableRow>
+                  ))
+                ) : (
                   <TableRow>
-                    <TableCell colSpan={4} align="center" sx={{ color: '#9e9e9e', py: 4 }}>No positions in portfolio</TableCell>
+                    <TableCell colSpan={4} align="center">
+                      No positions in portfolio
+                    </TableCell>
                   </TableRow>
                 )}
               </TableBody>

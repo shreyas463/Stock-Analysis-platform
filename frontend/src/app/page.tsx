@@ -1,7 +1,7 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
-import { Box, Container, Typography, Paper, Button, CircularProgress, Grid, Divider, Fade, Tooltip, IconButton, Card, CardContent } from '@mui/material';
+import React, { useState, useEffect, useRef } from 'react';
+import { Box, Container, Typography, Paper, Button, CircularProgress, Grid, Divider, Fade, Tooltip, IconButton, Card, CardContent, Tabs, Tab } from '@mui/material';
 import SearchBar from '../components/SearchBar';
 import StockChart from '@/components/StockChart';
 import NewsSection from '../components/NewsSection';
@@ -9,6 +9,7 @@ import TradingPanel from '../components/TradingPanel';
 import TopGainers from '../components/TopGainers';
 import Discussion from '@/components/Discussion';
 import StockerrLogo from '@/components/StockerrLogo';
+import PortfolioPieChart from '@/components/PortfolioPieChart';
 import { useAuth } from '@/contexts/AuthContext';
 import { useRouter } from 'next/navigation';
 import SearchIcon from '@mui/icons-material/Search';
@@ -17,10 +18,9 @@ import AccountBalanceWalletIcon from '@mui/icons-material/AccountBalanceWallet';
 import HomeIcon from '@mui/icons-material/Home';
 import RefreshIcon from '@mui/icons-material/Refresh';
 import DashboardIcon from '@mui/icons-material/Dashboard';
-import BarChartIcon from '@mui/icons-material/BarChart';
 import ForumIcon from '@mui/icons-material/Forum';
 import ExitToAppIcon from '@mui/icons-material/ExitToApp';
-import TestComponent from '@/components/TestComponent';
+import PersonIcon from '@mui/icons-material/Person';
 
 const API_BASE_URL = 'http://localhost:5001';
 
@@ -30,13 +30,29 @@ export default function Home() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const { user, logout, isAuthenticated, isLoading } = useAuth();
-  const [activeTab, setActiveTab] = useState<'market' | 'discussion'>('market');
+  const [activeTab, setActiveTab] = useState<'market' | 'discussion' | 'profile'>('market');
   const router = useRouter();
+  const searchInputRef = useRef<HTMLInputElement>(null);
+  
+  // Portfolio data
+  const [cashBalance, setCashBalance] = useState<number>(10000.00);
+  const [stocksValue, setStocksValue] = useState<number>(0.00);
+  const [portfolio, setPortfolio] = useState<any[]>([]);
 
   // Function to reset to homepage view
   const resetToHomepage = () => {
     setSelectedStock(null);
     setStockData(null);
+    setActiveTab('market');
+  };
+
+  // Function to focus on search bar
+  const focusOnSearch = () => {
+    if (searchInputRef.current) {
+      searchInputRef.current.focus();
+      // Scroll to the search bar
+      searchInputRef.current.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
   };
 
   const fetchStockData = async (symbol: string) => {
@@ -59,6 +75,20 @@ export default function Home() {
     }
   };
 
+  // Mock function to update portfolio data (in a real app, this would fetch from an API)
+  const updatePortfolioData = () => {
+    // Empty portfolio for now
+    setPortfolio([]);
+    setStocksValue(0);
+    setCashBalance(10000.00);
+  };
+  
+  useEffect(() => {
+    if (isAuthenticated) {
+      updatePortfolioData();
+    }
+  }, [isAuthenticated]);
+
   useEffect(() => {
     if (!isAuthenticated) {
       router.push('/login');
@@ -72,9 +102,9 @@ export default function Home() {
         display: 'flex', 
         justifyContent: 'center', 
         alignItems: 'center',
-        bgcolor: 'grey.900'
+        bgcolor: '#1a1e2e'
       }}>
-        <CircularProgress />
+        <CircularProgress sx={{ color: '#4caf50' }} />
       </Box>
     );
   }
@@ -83,244 +113,423 @@ export default function Home() {
     return null;
   }
 
-  // COMPLETELY NEW LAYOUT
+  // Profile component
+  const ProfileSection = () => (
+    <Card sx={{ bgcolor: '#1E1E1E', borderRadius: 2, p: 2 }}>
+      <CardContent>
+        <Typography variant="h6" sx={{ color: '#4caf50', mb: 3, fontWeight: 600 }}>
+          Profile Information
+        </Typography>
+        
+        <Grid container spacing={3}>
+          <Grid item xs={12} md={6}>
+            <Typography variant="subtitle2" sx={{ color: '#aaa', mb: 1 }}>
+              Full Name
+            </Typography>
+            <Paper 
+              sx={{ 
+                p: 2, 
+                bgcolor: '#2A2A2A', 
+                borderRadius: 1, 
+                mb: 3,
+                border: '1px solid #333'
+              }}
+            >
+              <Typography variant="body1" sx={{ color: '#fff' }}>
+                {user?.username || user?.email?.split('@')[0] || 'Not provided'}
+              </Typography>
+            </Paper>
+            
+            <Typography variant="subtitle2" sx={{ color: '#aaa', mb: 1 }}>
+              Email Address
+            </Typography>
+            <Paper 
+              sx={{ 
+                p: 2, 
+                bgcolor: '#2A2A2A', 
+                borderRadius: 1, 
+                mb: 3,
+                border: '1px solid #333'
+              }}
+            >
+              <Typography variant="body1" sx={{ color: '#fff' }}>
+                {user?.email || 'Not provided'}
+              </Typography>
+            </Paper>
+          </Grid>
+          
+          <Grid item xs={12} md={6}>
+            <Typography variant="subtitle2" sx={{ color: '#aaa', mb: 1 }}>
+              Account Type
+            </Typography>
+            <Paper 
+              sx={{ 
+                p: 2, 
+                bgcolor: '#2A2A2A', 
+                borderRadius: 1, 
+                mb: 3,
+                border: '1px solid #333'
+              }}
+            >
+              <Typography variant="body1" sx={{ color: '#fff' }}>
+                Standard
+              </Typography>
+            </Paper>
+            
+            <Typography variant="subtitle2" sx={{ color: '#aaa', mb: 1 }}>
+              Member Since
+            </Typography>
+            <Paper 
+              sx={{ 
+                p: 2, 
+                bgcolor: '#2A2A2A', 
+                borderRadius: 1, 
+                mb: 3,
+                border: '1px solid #333'
+              }}
+            >
+              <Typography variant="body1" sx={{ color: '#fff' }}>
+                {new Date().toLocaleDateString()}
+              </Typography>
+            </Paper>
+          </Grid>
+          
+          <Grid item xs={12}>
+            <Button 
+              variant="outlined" 
+              sx={{ 
+                color: '#4caf50', 
+                borderColor: '#4caf50',
+                '&:hover': {
+                  borderColor: '#4caf50',
+                  bgcolor: 'rgba(76, 175, 80, 0.1)'
+                }
+              }}
+            >
+              Edit Profile
+            </Button>
+          </Grid>
+        </Grid>
+      </CardContent>
+    </Card>
+  );
+
   return (
     <Box sx={{ 
-      display: 'flex',
       minHeight: '100vh',
-      bgcolor: '#121212',
+      bgcolor: '#1a1e2e',
+      p: 3
     }}>
-      {/* Sidebar */}
-      <Box sx={{ 
-        width: 240, 
-        bgcolor: '#1E1E1E', 
-        borderRight: '1px solid #333',
-        p: 2,
-        display: 'flex',
-        flexDirection: 'column'
-      }}>
-        <Box sx={{ 
-          display: 'flex', 
-          alignItems: 'center', 
-          mb: 4, 
-          cursor: 'pointer',
-          p: 2,
-          borderRadius: 2,
-          bgcolor: '#333',
-          '&:hover': { bgcolor: '#444' }
-        }} onClick={resetToHomepage}>
-          <StockerrLogo size={40} />
-          <Typography variant="h5" sx={{ ml: 2, color: '#fff', fontWeight: 'bold' }}>
-            Stockerr
-          </Typography>
-        </Box>
-        
-        <Button 
-          startIcon={<DashboardIcon />} 
+      <Box sx={{ mb: 4 }}>
+        <Typography 
+          variant="h4" 
           sx={{ 
-            justifyContent: 'flex-start', 
-            color: '#fff', 
-            mb: 1,
-            p: 1.5,
-            borderRadius: 2,
-            bgcolor: activeTab === 'market' ? '#ff5252' : 'transparent',
-            '&:hover': { bgcolor: activeTab === 'market' ? '#ff5252' : '#333' }
+            color: '#4caf50', 
+            mb: 3, 
+            fontWeight: 500,
+            cursor: 'pointer' 
           }}
-          onClick={() => setActiveTab('market')}
+          onClick={resetToHomepage}
         >
           Dashboard
-        </Button>
+        </Typography>
         
-        <Button 
-          startIcon={<BarChartIcon />} 
-          sx={{ 
-            justifyContent: 'flex-start', 
-            color: '#fff', 
-            mb: 1,
-            p: 1.5,
-            borderRadius: 2,
-            '&:hover': { bgcolor: '#333' }
-          }}
-        >
-          Analytics
-        </Button>
-        
-        <Button 
-          startIcon={<ForumIcon />} 
-          sx={{ 
-            justifyContent: 'flex-start', 
-            color: '#fff', 
-            mb: 1,
-            p: 1.5,
-            borderRadius: 2,
-            bgcolor: activeTab === 'discussion' ? '#ff5252' : 'transparent',
-            '&:hover': { bgcolor: activeTab === 'discussion' ? '#ff5252' : '#333' }
-          }}
-          onClick={() => setActiveTab('discussion')}
-        >
-          Discussion
-        </Button>
-        
-        <Box sx={{ flexGrow: 1 }} />
-        
-        <Button 
-          startIcon={<ExitToAppIcon />} 
-          sx={{ 
-            justifyContent: 'flex-start', 
-            color: '#ff5252', 
-            p: 1.5,
-            borderRadius: 2,
-            '&:hover': { bgcolor: 'rgba(255, 82, 82, 0.1)' }
-          }}
-          onClick={logout}
-        >
-          Logout
-        </Button>
+        <Box sx={{ 
+          display: 'flex', 
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          mb: 3
+        }}>
+          <Box sx={{ width: '100%', maxWidth: 600 }}>
+            <SearchBar 
+              onStockSelect={(symbol: string) => setSelectedStock(symbol)} 
+              inputRef={searchInputRef}
+            />
+          </Box>
+          
+          <Box>
+            <Button 
+              variant="contained" 
+              sx={{ 
+                bgcolor: activeTab === 'market' ? '#4caf50' : 'transparent',
+                color: '#fff',
+                mr: 1,
+                '&:hover': {
+                  bgcolor: activeTab === 'market' ? '#4caf50' : 'rgba(255, 255, 255, 0.1)'
+                }
+              }}
+              onClick={() => {
+                setActiveTab('market');
+                resetToHomepage();
+              }}
+            >
+              MARKET
+            </Button>
+            
+            <Button 
+              variant="contained" 
+              sx={{ 
+                bgcolor: activeTab === 'discussion' ? '#4caf50' : 'transparent',
+                color: '#fff',
+                mr: 1,
+                '&:hover': {
+                  bgcolor: activeTab === 'discussion' ? '#4caf50' : 'rgba(255, 255, 255, 0.1)'
+                }
+              }}
+              onClick={() => setActiveTab('discussion')}
+            >
+              DISCUSSION
+            </Button>
+            
+            <Button 
+              variant="contained" 
+              sx={{ 
+                bgcolor: activeTab === 'profile' ? '#4caf50' : 'transparent',
+                color: '#fff',
+                mr: 1,
+                '&:hover': {
+                  bgcolor: activeTab === 'profile' ? '#4caf50' : 'rgba(255, 255, 255, 0.1)'
+                }
+              }}
+              onClick={() => setActiveTab('profile')}
+            >
+              PROFILE
+            </Button>
+            
+            <Button 
+              variant="outlined" 
+              sx={{ 
+                color: '#ff5252',
+                borderColor: '#ff5252',
+                '&:hover': {
+                  borderColor: '#ff5252',
+                  bgcolor: 'rgba(255, 82, 82, 0.1)'
+                }
+              }}
+              onClick={logout}
+            >
+              LOGOUT
+            </Button>
+          </Box>
+        </Box>
       </Box>
       
-      {/* Main Content */}
-      <Box sx={{ flexGrow: 1, p: 3, overflow: 'auto' }}>
-        <TestComponent />
-        
-        <Box sx={{ mb: 4 }}>
-          <Typography variant="h4" sx={{ color: '#fff', mb: 2 }}>
-            {selectedStock ? `${selectedStock} Dashboard` : 'Trading Dashboard'}
-          </Typography>
-          <SearchBar onStockSelect={(symbol: string) => setSelectedStock(symbol)} />
-        </Box>
-        
-        {activeTab === 'market' ? (
-          <>
-            {selectedStock ? (
-              // After stock search - Grid layout
-              <Grid container spacing={3}>
-                <Grid item xs={12} lg={8}>
-                  <Card sx={{ bgcolor: '#1E1E1E', mb: 3, borderRadius: 2 }}>
-                    <CardContent>
-                      <Typography variant="h6" sx={{ color: '#fff', mb: 2 }}>
-                        {selectedStock} Stock Chart
-                      </Typography>
-                      <StockChart symbol={selectedStock} />
-                    </CardContent>
-                  </Card>
-                  
-                  <Card sx={{ bgcolor: '#1E1E1E', borderRadius: 2 }}>
-                    <CardContent>
-                      <Typography variant="h6" sx={{ color: '#fff', mb: 2 }}>
-                        Latest News
-                      </Typography>
-                      <NewsSection symbol={selectedStock} />
-                    </CardContent>
-                  </Card>
-                </Grid>
+      {activeTab === 'market' && (
+        <>
+          {selectedStock ? (
+            // After stock search - Grid layout
+            <Grid container spacing={3}>
+              <Grid item xs={12} lg={8}>
+                <Card sx={{ bgcolor: '#1E1E1E', mb: 3, borderRadius: 2 }}>
+                  <CardContent>
+                    <Typography variant="h6" sx={{ color: '#fff', mb: 2 }}>
+                      {selectedStock} Stock Chart
+                    </Typography>
+                    <StockChart symbol={selectedStock} />
+                  </CardContent>
+                </Card>
                 
-                <Grid item xs={12} lg={4}>
-                  <Card sx={{ bgcolor: '#1E1E1E', mb: 3, borderRadius: 2 }}>
-                    <CardContent>
-                      <Typography variant="h6" sx={{ color: '#fff', mb: 2 }}>
-                        Top Performers
-                      </Typography>
-                      <TopGainers />
-                    </CardContent>
-                  </Card>
-                  
-                  <Card sx={{ bgcolor: '#1E1E1E', borderRadius: 2 }}>
-                    <CardContent>
-                      <Typography variant="h6" sx={{ color: '#fff', mb: 2 }}>
+                <Card sx={{ bgcolor: '#1E1E1E', borderRadius: 2 }}>
+                  <CardContent>
+                    <Typography variant="h6" sx={{ color: '#fff', mb: 2 }}>
+                      Latest News
+                    </Typography>
+                    <NewsSection symbol={selectedStock} />
+                  </CardContent>
+                </Card>
+              </Grid>
+              
+              <Grid item xs={12} lg={4}>
+                <Card sx={{ bgcolor: '#1E1E1E', mb: 3, borderRadius: 2 }}>
+                  <CardContent>
+                    <Typography variant="h6" sx={{ color: '#fff', mb: 2 }}>
+                      Top Performers
+                    </Typography>
+                    <TopGainers maxItems={5} />
+                  </CardContent>
+                </Card>
+                
+                <Card sx={{ bgcolor: '#1E1E1E', borderRadius: 2 }}>
+                  <CardContent>
+                    <Typography variant="h6" sx={{ color: '#fff', mb: 2 }}>
+                      Trade Stocks
+                    </Typography>
+                    <TradingPanel selectedStockFromParent={selectedStock} />
+                  </CardContent>
+                </Card>
+              </Grid>
+            </Grid>
+          ) : (
+            // Before stock search - Different layout
+            <Grid container spacing={3}>
+              <Grid item xs={12} md={7}>
+                <Card sx={{ 
+                  bgcolor: '#1E1E1E', 
+                  borderRadius: 2,
+                  border: '1px solid #333'
+                }}>
+                  <CardContent>
+                    <Box sx={{ 
+                      display: 'flex', 
+                      alignItems: 'center', 
+                      mb: 3,
+                      pb: 2,
+                      borderBottom: '1px solid #333'
+                    }}>
+                      <AccountBalanceWalletIcon sx={{ color: '#4caf50', mr: 1, fontSize: 28 }} />
+                      <Typography variant="h6" sx={{ color: '#fff' }}>
                         Trade Stocks
                       </Typography>
-                      <TradingPanel selectedStockFromParent={selectedStock} />
-                    </CardContent>
-                  </Card>
-                </Grid>
+                    </Box>
+                    
+                    <TradingPanel selectedStockFromParent={selectedStock} />
+                  </CardContent>
+                </Card>
               </Grid>
-            ) : (
-              // Before stock search - Different layout
-              <Grid container spacing={3}>
-                <Grid item xs={12} md={7}>
-                  <Card sx={{ 
-                    bgcolor: '#1E1E1E', 
-                    borderRadius: 2,
-                    height: '100%',
-                    border: '1px solid #333'
-                  }}>
-                    <CardContent>
-                      <Box sx={{ 
-                        display: 'flex', 
-                        alignItems: 'center', 
-                        mb: 3,
-                        pb: 2,
-                        borderBottom: '1px solid #333'
-                      }}>
-                        <AccountBalanceWalletIcon sx={{ color: '#ff5252', mr: 1, fontSize: 28 }} />
-                        <Typography variant="h6" sx={{ color: '#fff' }}>
-                          Trading Platform
-                        </Typography>
+              
+              <Grid item xs={12} md={5}>
+                <Card sx={{ 
+                  bgcolor: '#1E1E1E', 
+                  borderRadius: 2,
+                  border: '1px solid #333',
+                  mb: 3
+                }}>
+                  <CardContent>
+                    <Box sx={{ 
+                      display: 'flex', 
+                      alignItems: 'center', 
+                      mb: 3,
+                      pb: 2,
+                      borderBottom: '1px solid #333'
+                    }}>
+                      <ShowChartIcon sx={{ color: '#4caf50', mr: 1, fontSize: 28 }} />
+                      <Typography variant="h6" sx={{ color: '#fff' }}>
+                        Top Performers
+                      </Typography>
+                    </Box>
+                    <TopGainers maxItems={5} />
+                  </CardContent>
+                </Card>
+
+                <Card sx={{ 
+                  bgcolor: '#1E1E1E', 
+                  borderRadius: 2,
+                  border: '1px solid #333'
+                }}>
+                  <CardContent>
+                    <PortfolioPieChart 
+                      cashBalance={cashBalance} 
+                      stocksValue={stocksValue} 
+                    />
+                  </CardContent>
+                </Card>
+
+                <Card sx={{ 
+                  bgcolor: '#1E1E1E', 
+                  borderRadius: 2,
+                  border: '1px solid #333',
+                  mt: 3
+                }}>
+                  <CardContent>
+                    <Typography variant="h6" sx={{ color: '#fff', mb: 2 }}>
+                      Your Portfolio
+                    </Typography>
+                    
+                    {portfolio.length > 0 ? (
+                      <Box>
+                        <Box sx={{ 
+                          display: 'grid', 
+                          gridTemplateColumns: '1fr 1fr 1fr 1fr', 
+                          borderBottom: '1px solid #333',
+                          pb: 1,
+                          mb: 1
+                        }}>
+                          <Typography variant="body2" sx={{ color: '#aaa' }}>Symbol</Typography>
+                          <Typography variant="body2" sx={{ color: '#aaa', textAlign: 'right' }}>Shares</Typography>
+                          <Typography variant="body2" sx={{ color: '#aaa', textAlign: 'right' }}>Price</Typography>
+                          <Typography variant="body2" sx={{ color: '#aaa', textAlign: 'right' }}>Value</Typography>
+                        </Box>
+                        
+                        {portfolio.map((stock) => (
+                          <Box 
+                            key={stock.symbol}
+                            sx={{ 
+                              display: 'grid', 
+                              gridTemplateColumns: '1fr 1fr 1fr 1fr',
+                              py: 1,
+                              borderBottom: '1px solid rgba(255,255,255,0.05)'
+                            }}
+                          >
+                            <Typography variant="body1" sx={{ color: '#fff', fontWeight: 'medium' }}>
+                              {stock.symbol}
+                            </Typography>
+                            <Typography variant="body1" sx={{ color: '#fff', textAlign: 'right' }}>
+                              {stock.shares}
+                            </Typography>
+                            <Typography variant="body1" sx={{ color: '#fff', textAlign: 'right' }}>
+                              ${stock.currentPrice.toFixed(2)}
+                            </Typography>
+                            <Typography variant="body1" sx={{ color: '#4caf50', textAlign: 'right', fontWeight: 'medium' }}>
+                              ${stock.value.toFixed(2)}
+                            </Typography>
+                          </Box>
+                        ))}
+                        
+                        <Box sx={{ 
+                          display: 'flex', 
+                          justifyContent: 'space-between',
+                          mt: 2,
+                          pt: 1,
+                          borderTop: '1px solid #333'
+                        }}>
+                          <Typography variant="body1" sx={{ color: '#fff', fontWeight: 'medium' }}>
+                            Total Portfolio Value:
+                          </Typography>
+                          <Typography variant="body1" sx={{ color: '#4caf50', fontWeight: 'bold' }}>
+                            ${(cashBalance + stocksValue).toFixed(2)}
+                          </Typography>
+                        </Box>
                       </Box>
-                      
-                      <Box sx={{ 
-                        display: 'flex', 
-                        flexDirection: 'column', 
-                        alignItems: 'center', 
-                        justifyContent: 'center',
-                        mb: 4,
-                        p: 4,
-                        borderRadius: 2,
-                        bgcolor: '#2A2A2A',
-                        border: '1px dashed #444'
-                      }}>
-                        <SearchIcon sx={{ fontSize: 48, color: '#ff5252', mb: 2 }} />
-                        <Typography variant="h6" sx={{ color: '#fff', mb: 1, textAlign: 'center' }}>
-                          Search for a stock above to view charts and news
+                    ) : (
+                      <Box sx={{ textAlign: 'center', py: 2 }}>
+                        <Typography variant="body1" sx={{ color: '#aaa' }}>
+                          You don't own any stocks yet.
                         </Typography>
-                        <Typography variant="body2" sx={{ color: '#aaa', textAlign: 'center' }}>
-                          Meanwhile, you can manage your portfolio and place trades below
-                        </Typography>
+                        <Button 
+                          variant="contained" 
+                          sx={{ 
+                            mt: 2, 
+                            bgcolor: '#4caf50',
+                            '&:hover': {
+                              bgcolor: '#3d8b40'
+                            }
+                          }}
+                          onClick={focusOnSearch}
+                        >
+                          START TRADING
+                        </Button>
                       </Box>
-                      
-                      <TradingPanel selectedStockFromParent={selectedStock} />
-                    </CardContent>
-                  </Card>
-                </Grid>
-                
-                <Grid item xs={12} md={5}>
-                  <Card sx={{ 
-                    bgcolor: '#1E1E1E', 
-                    borderRadius: 2,
-                    height: '100%',
-                    border: '1px solid #333'
-                  }}>
-                    <CardContent>
-                      <Box sx={{ 
-                        display: 'flex', 
-                        alignItems: 'center', 
-                        mb: 3,
-                        pb: 2,
-                        borderBottom: '1px solid #333'
-                      }}>
-                        <ShowChartIcon sx={{ color: '#ff5252', mr: 1, fontSize: 28 }} />
-                        <Typography variant="h6" sx={{ color: '#fff' }}>
-                          Top Performers
-                        </Typography>
-                      </Box>
-                      <TopGainers />
-                    </CardContent>
-                  </Card>
-                </Grid>
+                    )}
+                  </CardContent>
+                </Card>
               </Grid>
-            )}
-          </>
-        ) : (
-          <Card sx={{ bgcolor: '#1E1E1E', borderRadius: 2 }}>
-            <CardContent>
-              <Typography variant="h6" sx={{ color: '#fff', mb: 2 }}>
-                Discussion Forum
-              </Typography>
-              <Discussion />
-            </CardContent>
-          </Card>
-        )}
-      </Box>
+            </Grid>
+          )}
+        </>
+      )}
+      
+      {activeTab === 'discussion' && (
+        <Card sx={{ bgcolor: '#1E1E1E', borderRadius: 2 }}>
+          <CardContent>
+            <Typography variant="h6" sx={{ color: '#fff', mb: 2 }}>
+              Discussion Forum
+            </Typography>
+            <Discussion />
+          </CardContent>
+        </Card>
+      )}
+      
+      {activeTab === 'profile' && <ProfileSection />}
     </Box>
   );
 } 

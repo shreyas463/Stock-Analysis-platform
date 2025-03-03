@@ -96,7 +96,18 @@ export default function Home() {
       console.log("Portfolio data received:", data);
       
       setCashBalance(data.cash_balance || 0);
-      setPortfolio(data.portfolio || []);
+      
+      // Transform the portfolio data to match our frontend structure
+      const transformedPortfolio = Array.isArray(data.portfolio) 
+        ? data.portfolio.map((position: any) => ({
+            symbol: position.symbol,
+            shares: position.shares,
+            currentPrice: position.current_price || 0,
+            value: position.position_value || 0
+          }))
+        : [];
+      
+      setPortfolio(transformedPortfolio);
       
       // Calculate stocks value from portfolio positions
       const calculatedStocksValue = Array.isArray(data.portfolio) 
@@ -502,10 +513,10 @@ export default function Home() {
                               {stock.shares}
                             </Typography>
                             <Typography variant="body1" sx={{ color: '#fff', textAlign: 'right' }}>
-                              ${stock.currentPrice.toFixed(2)}
+                              ${(stock.currentPrice || 0).toFixed(2)}
                             </Typography>
                             <Typography variant="body1" sx={{ color: '#4caf50', textAlign: 'right', fontWeight: 'medium' }}>
-                              ${stock.value.toFixed(2)}
+                              ${(stock.value || 0).toFixed(2)}
                             </Typography>
                           </Box>
                         ))}

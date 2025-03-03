@@ -103,7 +103,7 @@ export default function Home() {
             symbol: position.symbol,
             shares: position.shares,
             currentPrice: position.current_price || 0,
-            value: position.position_value || 0
+            value: (position.shares * position.current_price) || 0
           }))
         : [];
       
@@ -112,7 +112,7 @@ export default function Home() {
       // Calculate stocks value from portfolio positions
       const calculatedStocksValue = Array.isArray(data.portfolio) 
         ? data.portfolio.reduce((total: number, position: any) => {
-            return total + (position.position_value || 0);
+            return total + (position.shares * position.current_price || 0);
           }, 0) 
         : 0;
       
@@ -389,18 +389,111 @@ export default function Home() {
                 <Card sx={{ bgcolor: '#1E1E1E', mb: 3, borderRadius: 2 }}>
                   <CardContent>
                     <Typography variant="h6" sx={{ color: '#fff', mb: 2 }}>
-                      Top Performers
-                    </Typography>
-                    <TopGainers maxItems={5} />
-                  </CardContent>
-                </Card>
-                
-                <Card sx={{ bgcolor: '#1E1E1E', borderRadius: 2 }}>
-                  <CardContent>
-                    <Typography variant="h6" sx={{ color: '#fff', mb: 2 }}>
                       Trade Stocks
                     </Typography>
                     <TradingPanel selectedStockFromParent={selectedStock} />
+                  </CardContent>
+                </Card>
+
+                <Card sx={{ 
+                  bgcolor: '#1E1E1E', 
+                  borderRadius: 2,
+                  border: '1px solid #333'
+                }}>
+                  <CardContent>
+                    <PortfolioPieChart 
+                      cashBalance={cashBalance} 
+                      stocksValue={stocksValue} 
+                    />
+                  </CardContent>
+                </Card>
+
+                <Card sx={{ 
+                  bgcolor: '#1E1E1E', 
+                  borderRadius: 2,
+                  border: '1px solid #333',
+                  mt: 3
+                }}>
+                  <CardContent>
+                    <Typography variant="h6" sx={{ color: '#fff', mb: 2 }}>
+                      Your Portfolio
+                    </Typography>
+                    
+                    {portfolio.length > 0 ? (
+                      <Box>
+                        <Box sx={{ 
+                          display: 'grid', 
+                          gridTemplateColumns: '1fr 1fr 1fr 1fr', 
+                          borderBottom: '1px solid #333',
+                          pb: 1,
+                          mb: 1
+                        }}>
+                          <Typography variant="body2" sx={{ color: '#aaa' }}>Symbol</Typography>
+                          <Typography variant="body2" sx={{ color: '#aaa', textAlign: 'right' }}>Shares</Typography>
+                          <Typography variant="body2" sx={{ color: '#aaa', textAlign: 'right' }}>Price</Typography>
+                          <Typography variant="body2" sx={{ color: '#aaa', textAlign: 'right' }}>Value</Typography>
+                        </Box>
+                        
+                        {portfolio.map((stock) => (
+                          <Box 
+                            key={stock.symbol}
+                            sx={{ 
+                              display: 'grid', 
+                              gridTemplateColumns: '1fr 1fr 1fr 1fr',
+                              py: 1,
+                              borderBottom: '1px solid rgba(255,255,255,0.05)'
+                            }}
+                          >
+                            <Typography variant="body1" sx={{ color: '#fff', fontWeight: 'medium' }}>
+                              {stock.symbol}
+                            </Typography>
+                            <Typography variant="body1" sx={{ color: '#fff', textAlign: 'right' }}>
+                              {stock.shares}
+                            </Typography>
+                            <Typography variant="body1" sx={{ color: '#fff', textAlign: 'right' }}>
+                              ${(stock.currentPrice || 0).toFixed(2)}
+                            </Typography>
+                            <Typography variant="body1" sx={{ color: '#4caf50', textAlign: 'right', fontWeight: 'medium' }}>
+                              ${(stock.value || 0).toFixed(2)}
+                            </Typography>
+                          </Box>
+                        ))}
+                        
+                        <Box sx={{ 
+                          display: 'flex', 
+                          justifyContent: 'space-between',
+                          mt: 2,
+                          pt: 1,
+                          borderTop: '1px solid #333'
+                        }}>
+                          <Typography variant="body1" sx={{ color: '#fff', fontWeight: 'medium' }}>
+                            Total Portfolio Value:
+                          </Typography>
+                          <Typography variant="body1" sx={{ color: '#4caf50', fontWeight: 'bold' }}>
+                            ${(cashBalance + stocksValue).toFixed(2)}
+                          </Typography>
+                        </Box>
+                      </Box>
+                    ) : (
+                      <Box sx={{ textAlign: 'center', py: 2 }}>
+                        <Typography variant="body1" sx={{ color: '#aaa' }}>
+                          You don't own any stocks yet.
+                        </Typography>
+                        <Button 
+                          variant="contained" 
+                          sx={{ 
+                            mt: 2, 
+                            bgcolor: '#4caf50',
+                            '&:hover': {
+                              bgcolor: '#3d8b40'
+                            }
+                          }}
+                          onClick={focusOnSearch}
+                        >
+                          START TRADING
+                        </Button>
+                      </Box>
+                    )}
                   </CardContent>
                 </Card>
               </Grid>
@@ -450,7 +543,7 @@ export default function Home() {
                     }}>
                       <ShowChartIcon sx={{ color: '#4caf50', mr: 1, fontSize: 28 }} />
                       <Typography variant="h6" sx={{ color: '#fff' }}>
-                        Top Performers
+                        Market Overview
                       </Typography>
                     </Box>
                     <TopGainers maxItems={5} />
@@ -532,7 +625,7 @@ export default function Home() {
                             Total Portfolio Value:
                           </Typography>
                           <Typography variant="body1" sx={{ color: '#4caf50', fontWeight: 'bold' }}>
-                            ${(cashBalance + stocksValue).toFixed(2)}
+                            ${(stocksValue).toFixed(2)}
                           </Typography>
                         </Box>
                       </Box>

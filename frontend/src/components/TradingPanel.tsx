@@ -57,6 +57,8 @@ import WarningAmberIcon from '@mui/icons-material/WarningAmber';
 import CloseIcon from '@mui/icons-material/Close';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import TimelineIcon from '@mui/icons-material/Timeline';
+import ErrorIcon from '@mui/icons-material/Error';
+import { LineChart, CartesianGrid, XAxis, YAxis, Tooltip as RechartsTooltip, Legend, Line, ReferenceLine, ResponsiveContainer } from 'recharts';
 
 interface PortfolioPosition {
   symbol: string;
@@ -127,6 +129,16 @@ export default function TradingPanel({ selectedStockFromParent }: TradingPanelPr
   const [selectedIndicator, setSelectedIndicator] = useState<string>('none');
   const [refreshKey, setRefreshKey] = useState(0);
 
+  // Log when analysisResult changes
+  useEffect(() => {
+    console.log("Analysis result changed:", analysisResult);
+    
+    // If analysis result is set, ensure the dialog is visible
+    if (analysisResult) {
+      console.log("Analysis result is set, dialog should be visible");
+    }
+  }, [analysisResult]);
+
   const getToken = async () => {
     if (!auth.currentUser) return null;
     try {
@@ -150,23 +162,16 @@ export default function TradingPanel({ selectedStockFromParent }: TradingPanelPr
         }
       });
       const data = await response.json();
-      console.log("TradingPanel received balance data:", data);
       
       setBalance(data.cash_balance || 0);
       
-      // Ensure portfolio is an array and has data
       if (Array.isArray(data.portfolio)) {
-        console.log("Setting portfolio with", data.portfolio.length, "positions");
         setPortfolio(data.portfolio);
       } else {
-        console.log("Portfolio data is not an array:", data.portfolio);
         setPortfolio([]);
       }
       
       setTotalValue(data.total_value || 0);
-      
-      // Force a refresh of the component
-      setRefreshKey(oldKey => oldKey + 1);
     } catch (error) {
       console.error("Error fetching balance:", error);
       setError('Failed to fetch balance');
@@ -247,62 +252,152 @@ export default function TradingPanel({ selectedStockFromParent }: TradingPanelPr
     }
   };
 
+  const fetchStockPrice = async (retryCount = 0) => {
+    if (!selectedStock) {
+      setCurrentPrice(null);
+      setPriceChange(null);
+      return;
+    }
+    
+    if (!isLoadingPrice) {
+      setIsLoadingPrice(true);
+    }
+    setError('');
+    
+    try {
+      const token = await getToken();
+      if (!token) {
+        setError('Authentication required');
+        setIsLoadingPrice(false);
+        return;
+      }
+      
+      console.log(`Fetching price for ${selectedStock}, attempt ${retryCount + 1}`);
+      
+      const response = await fetch(`http://localhost:5001/api/market/quote?symbol=${selectedStock}`, {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+      
+      if (!response.ok) {
+        throw new Error(`Failed to fetch stock price: ${response.status} ${response.statusText}`);
+      }
+      
+      const data = await response.json();
+      
+      if (data && typeof data.c === 'number') {
+        setCurrentPrice(data.c);
+        setPriceChange({
+          value: data.d || 0,
+          percentage: data.dp ? `${data.dp > 0 ? '+' : ''}${data.dp.toFixed(2)}%` : '+0.00%'
+        });
+        setError('');
+      } else {
+        throw new Error('Invalid price data received');
+      }
+    } catch (error) {
+      console.error(`Error fetching stock price for ${selectedStock}:`, error);
+      
+      if (retryCount < 2) { // Reduced retry count from 3 to 2
+        setTimeout(() => fetchStockPrice(retryCount + 1), 2000); // Increased delay to 2 seconds
+        return;
+      }
+      
+      // Only set default price if we've exhausted retries
+      setCurrentPrice(100);
+      setPriceChange({value: 0, percentage: '+0.00%'});
+      setError(`Failed to fetch stock price for ${selectedStock}. Using estimated price.`);
+    } finally {
+      setIsLoadingPrice(false);
+    }
+  };
+
+  // Update the useEffect for price fetching to use a longer interval
+  useEffect(() => {
+    fetchStockPrice();
+    
+    // Refresh price every 15 seconds instead of 10
+    const intervalId = setInterval(fetchStockPrice, 15000);
+    
+    return () => clearInterval(intervalId);
+  }, [selectedStock]);
+
   const handleTrade = async (type: 'buy' | 'sell') => {
     try {
       setError('');
       setSuccess('');
-      setAnalysisResult(null);
+      setIsAnalyzing(false);
       
       if (!selectedStock) {
         setError('Please select a stock');
-        return;
+        return false;
       }
       
       if (!shares || isNaN(parseFloat(shares)) || parseFloat(shares) <= 0) {
         setError('Please enter a valid number of shares');
-        return;
+        return false;
       }
       
       const token = await getToken();
       if (!token) {
         setError('Please log in to trade');
-        return;
+        return false;
       }
-      
-      const endpoint = type === 'buy' ? '/api/trading/buy' : '/api/trading/sell';
-      
-      // If buying with ML analysis, set the analyze_first flag
+
+      // If ML analysis is enabled and this is a buy action
       if (type === 'buy' && useMLAnalysis) {
         setIsAnalyzing(true);
-        
-        const response = await fetch(`http://localhost:5001${endpoint}`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${token}`
-          },
-          body: JSON.stringify({
-            symbol: selectedStock,
-            shares: parseFloat(shares),
-            analyze_first: true,
-            days: analysisDays, // Send the selected days for analysis
-            indicator: selectedIndicator // Send the selected technical indicator
-          })
-        });
-        
-        const data = await response.json();
-        setIsAnalyzing(false);
-        
-        if (response.ok && data.analysis) {
-          setAnalysisResult(data.analysis);
-          return;
-        } else {
-          setError(data.error || 'Failed to analyze stock');
-          return;
+        try {
+          const queryParams = new URLSearchParams({
+            symbol: selectedStock.toUpperCase(),
+            days: (analysisDays || 14).toString(),
+            indicator: selectedIndicator === 'none' ? 'none' : selectedIndicator
+          });
+
+          const analysisResponse = await fetch(`http://localhost:5001/api/trading/analyze-stock?${queryParams}`, {
+            method: 'GET',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${token}`
+            }
+          });
+
+          const analysisData = await analysisResponse.json();
+          
+          if (!analysisResponse.ok) {
+            throw new Error(analysisData.error || 'Failed to analyze stock');
+          }
+
+          // Convert the analysis data to match the expected format
+          const analysis: StockAnalysis = {
+            symbol: selectedStock.toUpperCase(),
+            current_price: currentPrice || 0,
+            predicted_price: analysisData.current_price * (1 + analysisData.expected_growth_pct / 100),
+            total_cost: (currentPrice || 0) * parseFloat(shares),
+            is_good_buy: analysisData.is_good_buy,
+            expected_growth: analysisData.expected_growth_pct,
+            confidence: analysisData.confidence_score / 100,
+            forecast: analysisData.forecast_prices,
+            days: analysisDays || 14
+          };
+
+          if (analysisData.indicator_data) {
+            analysis.indicator = analysisData.indicator_data;
+          }
+
+          setIsAnalyzing(false);
+          setAnalysisResult(analysis);
+          return false; // Stop here and wait for user to confirm in dialog
+        } catch (error: any) {
+          setIsAnalyzing(false);
+          setError(error.message || 'Failed to analyze stock. Please try again.');
+          return false;
         }
       }
-      
-      // Regular buy/sell without analysis or after analysis
+
+      // Regular buy/sell or after ML analysis confirmation
+      const endpoint = type === 'buy' ? '/api/trading/buy' : '/api/trading/sell';
       const response = await fetch(`http://localhost:5001${endpoint}`, {
         method: 'POST',
         headers: {
@@ -321,14 +416,55 @@ export default function TradingPanel({ selectedStockFromParent }: TradingPanelPr
         setSuccess(`Successfully ${type === 'buy' ? 'bought' : 'sold'} ${shares} shares of ${selectedStock}`);
         setShares('');
         setAnalysisResult(null);
-        fetchBalance();
-        fetchTransactions();
+        setShowAlternatives(false);
+        await fetchBalance();
+        await fetchTransactions();
+        return true;
       } else {
         setError(data.error || `Failed to ${type} shares`);
+        return false;
       }
     } catch (error) {
       setIsAnalyzing(false);
       setError(`An error occurred while ${type === 'buy' ? 'buying' : 'selling'} shares`);
+      return false;
+    }
+  };
+
+  const proceedWithPurchase = async () => {
+    try {
+      const token = await getToken();
+      if (!token) {
+        setError('Please log in to trade');
+        return;
+      }
+
+      const response = await fetch('http://localhost:5001/api/trading/buy', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          symbol: selectedStock,
+          shares: parseFloat(shares)
+        })
+      });
+
+      const data = await response.json();
+
+      if (response.ok) {
+        setSuccess(`Successfully bought ${shares} shares of ${selectedStock}`);
+        setShares('');
+        setAnalysisResult(null);
+        setShowAlternatives(false);
+        await fetchBalance();
+        await fetchTransactions();
+      } else {
+        setError(data.error || 'Failed to buy shares');
+      }
+    } catch (error) {
+      setError('An error occurred while buying shares');
     }
   };
 
@@ -371,78 +507,6 @@ export default function TradingPanel({ selectedStockFromParent }: TradingPanelPr
     }
   };
 
-  const proceedWithPurchase = () => {
-    // Reset analysis result and proceed with regular purchase
-    setAnalysisResult(null);
-    handleTrade('buy');
-  };
-
-  // Fetch stock price when a stock symbol is selected
-  useEffect(() => {
-    const fetchStockPrice = async () => {
-      if (!selectedStock) {
-        setCurrentPrice(null);
-        setPriceChange(null);
-        return;
-      }
-      
-      setIsLoadingPrice(true);
-      setError('');
-      
-      try {
-        const token = await getToken();
-        if (!token) {
-          setError('Authentication required');
-          setIsLoadingPrice(false);
-          return;
-        }
-        
-        const response = await fetch(`http://localhost:5001/api/market/quote?symbol=${selectedStock}`, {
-          headers: {
-            'Authorization': `Bearer ${token}`
-          }
-        });
-        
-        if (!response.ok) {
-          throw new Error('Failed to fetch stock price');
-        }
-        
-        const data = await response.json();
-        
-        if (data && data.c) {
-          setCurrentPrice(data.c);
-          
-          // Calculate price change
-          const changeValue = data.d || 0;
-          const changePercent = data.dp ? `${data.dp > 0 ? '+' : ''}${data.dp.toFixed(2)}%` : '+0.00%';
-          
-          setPriceChange({
-            value: changeValue,
-            percentage: changePercent
-          });
-        } else {
-          setCurrentPrice(0);
-          setPriceChange({value: 0, percentage: '+0.00%'});
-        }
-      } catch (error) {
-        console.error('Error fetching stock price:', error);
-        setError('Failed to fetch stock price');
-        setCurrentPrice(0);
-        setPriceChange({value: 0, percentage: '+0.00%'});
-      } finally {
-        setIsLoadingPrice(false);
-      }
-    };
-    
-    fetchStockPrice();
-    
-    // Set up interval to refresh the price every 10 seconds
-    const intervalId = setInterval(fetchStockPrice, 10000);
-    
-    // Clean up interval on unmount or when selectedStock changes
-    return () => clearInterval(intervalId);
-  }, [selectedStock]);
-
   // Calculate total cost when shares or current price changes
   useEffect(() => {
     if (currentPrice && shares && !isNaN(parseFloat(shares))) {
@@ -454,6 +518,447 @@ export default function TradingPanel({ selectedStockFromParent }: TradingPanelPr
       } : null);
     }
   }, [currentPrice, shares]);
+
+  // Add a new component for the analysis dialog
+  const AnalysisResultDialog = () => {
+    console.log("Rendering AnalysisResultDialog, analysisResult:", analysisResult);
+    
+    if (!analysisResult) {
+      console.log("No analysis result, not rendering dialog");
+      return null;
+    }
+    
+    return (
+      <Dialog 
+        open={Boolean(analysisResult)} 
+        onClose={() => {
+          console.log("Dialog closed, setting analysisResult to null");
+          setAnalysisResult(null);
+        }}
+        maxWidth="md"
+        PaperProps={{
+          sx: {
+            bgcolor: '#1a1a1a',
+            color: 'white',
+            borderRadius: 3,
+            minWidth: '600px',
+            backgroundImage: 'linear-gradient(to bottom, #242424, #1a1a1a)',
+            border: '1px solid rgba(255, 255, 255, 0.1)',
+            boxShadow: '0 8px 32px rgba(0, 0, 0, 0.4)'
+          }
+        }}
+      >
+        <DialogTitle sx={{ 
+          borderBottom: '1px solid rgba(255, 255, 255, 0.1)', 
+          display: 'flex', 
+          justifyContent: 'space-between', 
+          alignItems: 'center',
+          background: 'linear-gradient(45deg, #2c2c2c, #242424)',
+          py: 2.5
+        }}>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+            <AnalyticsIcon sx={{ color: '#69f0ae', fontSize: 28 }} />
+            <Typography variant="h5" sx={{ fontWeight: '500', color: '#fff' }}>
+              ARIMA Model Analysis for {analysisResult?.symbol}
+            </Typography>
+          </Box>
+          <IconButton 
+            edge="end" 
+            onClick={() => setAnalysisResult(null)} 
+            aria-label="close"
+            sx={{ 
+              color: 'rgba(255, 255, 255, 0.7)',
+              '&:hover': { 
+                color: '#fff',
+                backgroundColor: 'rgba(255, 255, 255, 0.1)' 
+              }
+            }}
+          >
+            <CloseIcon />
+          </IconButton>
+        </DialogTitle>
+        <DialogContent sx={{ mt: 3, px: 4, color: '#ffffff' }}>
+          <Box sx={{ mb: 4 }}>
+            <Typography variant="h6" sx={{ 
+              color: '#69f0ae',
+              fontWeight: '500',
+              mb: 3,
+              display: 'flex',
+              alignItems: 'center',
+              gap: 1
+            }}>
+              <TimelineIcon sx={{ fontSize: 20 }} />
+              Prediction Summary
+            </Typography>
+            <Grid container spacing={3}>
+              <Grid item xs={12} sm={6}>
+                <Paper sx={{ 
+                  p: 3, 
+                  bgcolor: 'rgba(20, 20, 20, 0.7)',
+                  borderRadius: 2,
+                  backdropFilter: 'blur(10px)',
+                  border: '1px solid rgba(255, 255, 255, 0.1)',
+                  transition: 'transform 0.2s',
+                  '&:hover': {
+                    transform: 'translateY(-2px)',
+                    boxShadow: '0 4px 20px rgba(105, 240, 174, 0.1)'
+                  }
+                }}>
+                  <Typography variant="subtitle2" sx={{ color: 'rgba(255, 255, 255, 0.7)', mb: 1 }}>
+                    Current Price
+                  </Typography>
+                  <Typography variant="h4" sx={{ color: '#fff', fontWeight: '500' }}>
+                    ${analysisResult?.current_price.toFixed(2)}
+                  </Typography>
+                </Paper>
+              </Grid>
+              <Grid item xs={12} sm={6}>
+                <Paper sx={{ 
+                  p: 3, 
+                  bgcolor: 'rgba(20, 20, 20, 0.7)',
+                  borderRadius: 2,
+                  backdropFilter: 'blur(10px)',
+                  border: `1px solid ${analysisResult?.expected_growth > 0 ? 'rgba(105, 240, 174, 0.3)' : 'rgba(255, 82, 82, 0.3)'}`,
+                  transition: 'transform 0.2s',
+                  '&:hover': {
+                    transform: 'translateY(-2px)',
+                    boxShadow: `0 4px 20px ${analysisResult?.expected_growth > 0 ? 'rgba(105, 240, 174, 0.1)' : 'rgba(255, 82, 82, 0.1)'}`
+                  }
+                }}>
+                  <Typography variant="subtitle2" sx={{ color: 'rgba(255, 255, 255, 0.7)', mb: 1 }}>
+                    Expected Growth
+                  </Typography>
+                  <Typography variant="h4" sx={{ 
+                    color: analysisResult?.expected_growth > 0 ? '#69f0ae' : '#ff5252',
+                    fontWeight: '500',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 1
+                  }}>
+                    {analysisResult?.expected_growth > 0 ? <TrendingUpIcon /> : <TrendingDownIcon />}
+                    {analysisResult?.expected_growth > 0 ? '+' : ''}{analysisResult?.expected_growth}%
+                  </Typography>
+                </Paper>
+              </Grid>
+              <Grid item xs={12} sm={6}>
+                <Paper sx={{ 
+                  p: 3, 
+                  bgcolor: 'rgba(20, 20, 20, 0.7)',
+                  borderRadius: 2,
+                  backdropFilter: 'blur(10px)',
+                  border: '1px solid rgba(255, 255, 255, 0.1)',
+                  transition: 'transform 0.2s',
+                  '&:hover': {
+                    transform: 'translateY(-2px)',
+                    boxShadow: '0 4px 20px rgba(105, 240, 174, 0.1)'
+                  }
+                }}>
+                  <Typography variant="subtitle2" sx={{ color: 'rgba(255, 255, 255, 0.7)', mb: 1 }}>
+                    Confidence Score
+                  </Typography>
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+                    <Typography variant="h4" sx={{ color: '#fff', fontWeight: '500' }}>
+                      {(analysisResult?.confidence * 100).toFixed(1)}%
+                    </Typography>
+                    <Box sx={{ 
+                      display: 'flex', 
+                      alignItems: 'center', 
+                      bgcolor: analysisResult && analysisResult.confidence > 0.7 ? 'rgba(105, 240, 174, 0.1)' : 
+                               analysisResult && analysisResult.confidence > 0.4 ? 'rgba(255, 152, 0, 0.1)' : 
+                               'rgba(255, 82, 82, 0.1)',
+                      p: 1,
+                      borderRadius: 1
+                    }}>
+                      {analysisResult && analysisResult.confidence > 0.7 ? (
+                        <CheckCircleIcon sx={{ color: '#69f0ae' }} />
+                      ) : analysisResult && analysisResult.confidence > 0.4 ? (
+                        <InfoIcon sx={{ color: '#ff9800' }} />
+                      ) : (
+                        <ErrorIcon sx={{ color: '#ff5252' }} />
+                      )}
+                    </Box>
+                  </Box>
+                </Paper>
+              </Grid>
+              <Grid item xs={12} sm={6}>
+                <Paper sx={{ 
+                  p: 3, 
+                  bgcolor: 'rgba(20, 20, 20, 0.7)',
+                  borderRadius: 2,
+                  backdropFilter: 'blur(10px)',
+                  border: `1px solid ${analysisResult?.is_good_buy ? 'rgba(105, 240, 174, 0.3)' : 'rgba(255, 82, 82, 0.3)'}`,
+                  transition: 'transform 0.2s',
+                  '&:hover': {
+                    transform: 'translateY(-2px)',
+                    boxShadow: `0 4px 20px ${analysisResult?.is_good_buy ? 'rgba(105, 240, 174, 0.1)' : 'rgba(255, 82, 82, 0.1)'}`
+                  }
+                }}>
+                  <Typography variant="subtitle2" sx={{ color: 'rgba(255, 255, 255, 0.7)', mb: 1 }}>
+                    Recommendation
+                  </Typography>
+                  <Typography variant="h4" sx={{ 
+                    color: analysisResult?.is_good_buy ? '#69f0ae' : '#ff5252',
+                    fontWeight: '500',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 1
+                  }}>
+                    {analysisResult?.is_good_buy ? (
+                      <RecommendIcon sx={{ fontSize: 28 }} />
+                    ) : (
+                      <WarningAmberIcon sx={{ fontSize: 28 }} />
+                    )}
+                    {analysisResult?.is_good_buy ? 'Buy' : 'Hold/Avoid'}
+                  </Typography>
+                </Paper>
+              </Grid>
+            </Grid>
+          </Box>
+
+          {analysisResult?.indicator && (
+            <Box sx={{ mb: 4 }}>
+              <Typography variant="h6" sx={{ 
+                color: '#69f0ae',
+                fontWeight: '500',
+                mb: 3,
+                display: 'flex',
+                alignItems: 'center',
+                gap: 1
+              }}>
+                <ShowChartIcon sx={{ fontSize: 20 }} />
+                {analysisResult.indicator.type} Analysis
+              </Typography>
+              <Paper sx={{ 
+                p: 3, 
+                bgcolor: 'rgba(20, 20, 20, 0.7)',
+                borderRadius: 2,
+                backdropFilter: 'blur(10px)',
+                border: '1px solid rgba(255, 255, 255, 0.1)'
+              }}>
+                <Typography variant="body1" sx={{ 
+                  mb: 2,
+                  color: 'rgba(255, 255, 255, 0.9)',
+                  lineHeight: 1.6
+                }}>
+                  {analysisResult.indicator.description}
+                </Typography>
+                <Box sx={{ 
+                  mt: 2,
+                  p: 2,
+                  borderRadius: 1,
+                  bgcolor: analysisResult.indicator.recommendation === 'Buy' ? 
+                    'rgba(105, 240, 174, 0.1)' : 
+                    analysisResult.indicator.recommendation === 'Sell' ? 
+                      'rgba(255, 82, 82, 0.1)' : 
+                      'rgba(255, 152, 0, 0.1)',
+                  border: `1px solid ${
+                    analysisResult.indicator.recommendation === 'Buy' ? 
+                      'rgba(105, 240, 174, 0.3)' : 
+                      analysisResult.indicator.recommendation === 'Sell' ? 
+                        'rgba(255, 82, 82, 0.3)' : 
+                        'rgba(255, 152, 0, 0.3)'
+                  }`
+                }}>
+                  <Typography variant="subtitle1" sx={{ 
+                    color: analysisResult.indicator.recommendation === 'Buy' ? 
+                      '#69f0ae' : 
+                      analysisResult.indicator.recommendation === 'Sell' ? 
+                        '#ff5252' : 
+                        '#ff9800',
+                    fontWeight: '500',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 1
+                  }}>
+                    {analysisResult.indicator.recommendation === 'Buy' ? (
+                      <CheckCircleIcon />
+                    ) : analysisResult.indicator.recommendation === 'Sell' ? (
+                      <CancelOutlinedIcon />
+                    ) : (
+                      <InfoIcon />
+                    )}
+                    Recommendation: {analysisResult.indicator.recommendation}
+                  </Typography>
+                </Box>
+              </Paper>
+            </Box>
+          )}
+
+          <Box sx={{ mb: 3 }}>
+            <Typography variant="h6" sx={{ 
+              color: '#69f0ae',
+              fontWeight: '500',
+              mb: 3,
+              display: 'flex',
+              alignItems: 'center',
+              gap: 1
+            }}>
+              <TimelineIcon sx={{ fontSize: 20 }} />
+              14-Day Price Forecast
+            </Typography>
+            <Paper sx={{ 
+              p: 3, 
+              bgcolor: 'rgba(20, 20, 20, 0.7)',
+              borderRadius: 2,
+              backdropFilter: 'blur(10px)',
+              border: '1px solid rgba(255, 255, 255, 0.1)',
+              height: 350
+            }}>
+              <ResponsiveContainer width="100%" height="100%">
+                <LineChart
+                  data={analysisResult?.forecast.map((price, index) => ({ day: `Day ${index + 1}`, price }))}
+                  margin={{ top: 10, right: 30, left: 20, bottom: 5 }}
+                >
+                  <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.1)" />
+                  <XAxis 
+                    dataKey="day" 
+                    stroke="#aaa"
+                    tick={{ fill: '#aaa' }}
+                    axisLine={{ stroke: 'rgba(255,255,255,0.2)' }}
+                  />
+                  <YAxis 
+                    stroke="#aaa"
+                    tick={{ fill: '#aaa' }}
+                    axisLine={{ stroke: 'rgba(255,255,255,0.2)' }}
+                  />
+                  <RechartsTooltip 
+                    contentStyle={{ 
+                      backgroundColor: '#242424', 
+                      border: '1px solid rgba(255,255,255,0.1)',
+                      borderRadius: '4px',
+                      boxShadow: '0 4px 20px rgba(0,0,0,0.3)'
+                    }}
+                    itemStyle={{ color: '#fff' }}
+                    formatter={(value: any) => [`$${Number(value).toFixed(2)}`, 'Price']}
+                  />
+                  <Line 
+                    type="monotone" 
+                    dataKey="price" 
+                    stroke="#69f0ae" 
+                    strokeWidth={2}
+                    dot={{ r: 4, fill: '#69f0ae', strokeWidth: 2 }}
+                    activeDot={{ r: 6, fill: '#fff', stroke: '#69f0ae', strokeWidth: 2 }}
+                  />
+                  <ReferenceLine 
+                    y={analysisResult?.current_price} 
+                    stroke="rgba(255,255,255,0.5)" 
+                    strokeDasharray="5 5"
+                    label={{ 
+                      value: 'Current Price', 
+                      position: 'insideBottomRight',
+                      fill: 'rgba(255,255,255,0.7)',
+                      fontSize: 12
+                    }} 
+                  />
+                </LineChart>
+              </ResponsiveContainer>
+            </Paper>
+          </Box>
+        </DialogContent>
+        <DialogActions sx={{ 
+          p: 4, 
+          bgcolor: 'rgba(20, 20, 20, 0.7)',
+          borderTop: '1px solid rgba(255, 255, 255, 0.1)',
+          display: 'flex',
+          justifyContent: 'space-between',
+          gap: 2
+        }}>
+          <Button 
+            onClick={() => findAlternativeStocks()} 
+            startIcon={isLoadingAlternatives ? <CircularProgress size={20} /> : <SearchIcon />}
+            disabled={isLoadingAlternatives}
+            sx={{ 
+              color: 'white',
+              borderColor: 'rgba(255,255,255,0.3)',
+              bgcolor: 'rgba(255,255,255,0.05)',
+              px: 3,
+              '&:hover': {
+                bgcolor: 'rgba(255,255,255,0.1)',
+                borderColor: 'rgba(255,255,255,0.5)'
+              }
+            }}
+            variant="outlined"
+          >
+            Find Alternatives
+          </Button>
+          
+          <Box sx={{ display: 'flex', gap: 2 }}>
+            <Button 
+              onClick={() => setAnalysisResult(null)} 
+              sx={{ 
+                color: 'rgba(255,255,255,0.7)',
+                '&:hover': {
+                  color: '#fff',
+                  bgcolor: 'rgba(255,255,255,0.1)'
+                }
+              }}
+            >
+              Cancel
+            </Button>
+            
+            <Button 
+              onClick={proceedWithPurchase} 
+              variant="contained" 
+              startIcon={<ShoppingCartIcon />}
+              sx={{ 
+                bgcolor: analysisResult?.is_good_buy ? '#69f0ae' : '#ff9800',
+                color: '#1a1a1a',
+                fontWeight: 'bold',
+                px: 4,
+                '&:hover': {
+                  bgcolor: analysisResult?.is_good_buy ? '#4caf50' : '#f57c00',
+                  transform: 'translateY(-1px)',
+                  boxShadow: '0 4px 12px rgba(0,0,0,0.3)'
+                },
+                transition: 'all 0.2s'
+              }}
+            >
+              Buy Now
+            </Button>
+          </Box>
+        </DialogActions>
+      </Dialog>
+    );
+  };
+
+  useEffect(() => {
+    const fetchPortfolio = async () => {
+      try {
+        const token = await getToken();
+        if (!token) return;
+        
+        const response = await fetch('http://localhost:5001/api/trading/balance', {
+          headers: {
+            'Authorization': `Bearer ${token}`
+          }
+        });
+        
+        if (!response.ok) {
+          throw new Error('Failed to fetch portfolio');
+        }
+        
+        const data = await response.json();
+        setBalance(data.cash_balance || 0);
+        
+        if (Array.isArray(data.portfolio)) {
+          setPortfolio(data.portfolio);
+          const portfolioValue = data.portfolio.reduce((sum: number, position: PortfolioPosition) => {
+            return sum + position.position_value;
+          }, 0);
+          setTotalValue(data.cash_balance + portfolioValue);
+        } else {
+          setPortfolio([]);
+          setTotalValue(data.cash_balance);
+        }
+      } catch (error) {
+        console.error('Error fetching portfolio:', error);
+      }
+    };
+    
+    fetchPortfolio();
+    const intervalId = setInterval(fetchPortfolio, 15000);
+    return () => clearInterval(intervalId);
+  }, []);
 
   return (
     <Box sx={{ 
@@ -493,373 +998,8 @@ export default function TradingPanel({ selectedStockFromParent }: TradingPanelPr
         </Alert>
       )}
 
-      {/* Analysis Result Dialog */}
-      <Dialog 
-        open={analysisResult !== null} 
-        onClose={() => setAnalysisResult(null)}
-        maxWidth="md"
-        PaperProps={{
-          sx: {
-            bgcolor: '#242424',
-            color: 'white',
-            borderRadius: 2,
-            minWidth: '500px'
-          }
-        }}
-      >
-        <DialogTitle sx={{ 
-          display: 'flex', 
-          alignItems: 'center', 
-          gap: 1,
-          borderBottom: '1px solid rgba(255,255,255,0.1)',
-          pb: 2
-        }}>
-          <AnalyticsIcon color="primary" />
-          <Typography variant="h6">
-            ARIMA Model Analysis for {analysisResult?.symbol}
-          </Typography>
-        </DialogTitle>
-        <DialogContent sx={{ mt: 2, color: '#ffffff' }}>
-          {analysisResult && (
-            <Box>
-              <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
-                <Box>
-                  <Typography variant="h5" sx={{ color: '#ffffff', fontWeight: 'bold' }}>${analysisResult.current_price.toFixed(2)}</Typography>
-                  <Typography variant="body2" color="#9e9e9e">Current Price</Typography>
-                </Box>
-                <Box sx={{ textAlign: 'center' }}>
-                  <Typography variant="h6" sx={{ 
-                    color: analysisResult.expected_growth > 0 ? '#00ffb3' : '#ff5252',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    fontWeight: 'bold'
-                  }}>
-                    {analysisResult.expected_growth > 0 ? <TrendingUpIcon fontSize="small" sx={{ mr: 0.5 }} /> : <TrendingDownIcon fontSize="small" sx={{ mr: 0.5 }} />}
-                    {Math.abs(analysisResult.expected_growth).toFixed(2)}%
-                  </Typography>
-                  <Typography variant="body2" color="#9e9e9e">Expected Change</Typography>
-                </Box>
-                <Box>
-                  <Typography variant="h5" sx={{ 
-                    color: analysisResult.expected_growth > 0 ? '#00ffb3' : '#ff5252',
-                    fontWeight: 'bold'
-                  }}>
-                    ${analysisResult.predicted_price ? analysisResult.predicted_price.toFixed(2) : (analysisResult.current_price * (1 + analysisResult.expected_growth / 100)).toFixed(2)}
-                  </Typography>
-                  <Typography variant="body2" color="#9e9e9e">Predicted Price ({analysisResult.days} days)</Typography>
-                </Box>
-                <Chip 
-                  icon={analysisResult.is_good_buy ? <CheckCircleOutlineIcon /> : <CancelOutlinedIcon />} 
-                  label={analysisResult.is_good_buy ? "Good Buy" : "Not Recommended"} 
-                  color={analysisResult.is_good_buy ? "success" : "error"}
-                  sx={{ fontWeight: 'bold' }}
-                />
-              </Box>
-              
-              <Box sx={{ mb: 3 }}>
-                <Typography variant="body1" sx={{ mb: 1, display: 'flex', alignItems: 'center', justifyContent: 'space-between', color: '#ffffff' }}>
-                  <span>Confidence:</span>
-                  <Box sx={{ 
-                    width: '60%', 
-                    height: '8px', 
-                    bgcolor: 'rgba(255,255,255,0.1)', 
-                    borderRadius: '4px',
-                    position: 'relative',
-                    overflow: 'hidden'
-                  }}>
-                    <Box sx={{ 
-                      position: 'absolute',
-                      left: 0,
-                      top: 0,
-                      height: '100%',
-                      width: `${analysisResult.confidence * 100}%`,
-                      bgcolor: analysisResult.confidence > 0.7 ? '#00ffb3' : 
-                              analysisResult.confidence > 0.4 ? '#ffb74d' : '#ff5252',
-                      borderRadius: '4px'
-                    }} />
-                  </Box>
-                  <span>{(analysisResult.confidence * 100).toFixed(0)}%</span>
-                </Typography>
-                
-                <Typography variant="body1" sx={{ mb: 1, color: '#ffffff' }}>
-                  Total Cost: ${analysisResult.total_cost.toFixed(2)}
-                </Typography>
-              </Box>
-
-              {/* Add a simple line chart visualization of the forecast */}
-              {analysisResult.forecast && analysisResult.forecast.length > 0 && (
-                <Box sx={{ height: 120, mb: 3, mt: 2 }}>
-                  <Typography variant="body2" color="#9e9e9e" sx={{ mb: 1 }}>
-                    Price Forecast (Next {analysisResult.days} Days)
-                  </Typography>
-                  <Box sx={{ 
-                    height: '100%', 
-                    display: 'flex', 
-                    alignItems: 'flex-end',
-                    position: 'relative'
-                  }}>
-                    {/* Draw the line chart */}
-                    <Box sx={{ 
-                      position: 'absolute',
-                      top: 0,
-                      left: 0,
-                      right: 0,
-                      bottom: 0,
-                      display: 'flex',
-                      alignItems: 'flex-end'
-                    }}>
-                      {analysisResult.forecast.map((price, index) => {
-                        const maxPrice = Math.max(...analysisResult.forecast);
-                        const minPrice = Math.min(...analysisResult.forecast);
-                        const range = maxPrice - minPrice;
-                        const height = range > 0 ? ((price - minPrice) / range) * 80 + 10 : 50;
-                        
-                        return (
-                          <Box 
-                            key={index}
-                            sx={{
-                              flex: 1,
-                              height: `${height}%`,
-                              backgroundColor: analysisResult.expected_growth > 0 ? '#00ffb3' : '#ff5252',
-                              opacity: 0.7,
-                              mx: 0.5,
-                              borderTopLeftRadius: 2,
-                              borderTopRightRadius: 2,
-                              position: 'relative',
-                              '&:hover': {
-                                opacity: 1,
-                                '& .tooltip': {
-                                  display: 'block'
-                                }
-                              }
-                            }}
-                          >
-                            <Box 
-                              className="tooltip"
-                              sx={{
-                                display: 'none',
-                                position: 'absolute',
-                                bottom: '100%',
-                                left: '50%',
-                                transform: 'translateX(-50%)',
-                                backgroundColor: 'rgba(0,0,0,0.8)',
-                                color: 'white',
-                                padding: '4px 8px',
-                                borderRadius: 1,
-                                fontSize: '0.7rem',
-                                whiteSpace: 'nowrap',
-                                zIndex: 10
-                              }}
-                            >
-                              ${price.toFixed(2)}
-                            </Box>
-                          </Box>
-                        );
-                      })}
-                    </Box>
-                  </Box>
-                </Box>
-              )}
-              
-              {/* Technical Indicator Section */}
-              {analysisResult?.indicator && (
-                <Box sx={{ mt: 3, mb: 3 }}>
-                  <Divider sx={{ my: 2, borderColor: 'rgba(255,255,255,0.1)' }} />
-                  
-                  <Typography variant="subtitle1" sx={{ 
-                    display: 'flex', 
-                    alignItems: 'center', 
-                    gap: 1,
-                    mb: 2 
-                  }}>
-                    <ShowChartIcon color="primary" />
-                    {analysisResult?.indicator?.type} Analysis
-                  </Typography>
-                  
-                  <Box sx={{ 
-                    display: 'flex', 
-                    alignItems: 'center', 
-                    justifyContent: 'space-between',
-                    mb: 2
-                  }}>
-                    <Chip 
-                      label={analysisResult?.indicator?.recommendation || 'Hold'} 
-                      color={
-                        analysisResult?.indicator?.recommendation?.includes('Buy') ? 'success' :
-                        analysisResult?.indicator?.recommendation?.includes('Sell') ? 'error' :
-                        'warning'
-                      }
-                      sx={{ fontWeight: 'bold' }}
-                    />
-                    <Typography variant="body2" color="#9e9e9e">
-                      {analysisResult?.indicator?.description}
-                    </Typography>
-                  </Box>
-                  
-                  {/* Simple visualization of the indicator values */}
-                  {analysisResult?.indicator?.values && analysisResult?.indicator?.values.length > 0 && (
-                    <Box sx={{ height: 80, mb: 2 }}>
-                      <Box sx={{ 
-                        height: '100%', 
-                        display: 'flex', 
-                        alignItems: 'flex-end',
-                        position: 'relative'
-                      }}>
-                        {analysisResult?.indicator?.values.map((value, index) => {
-                          // Calculate relative height based on min/max values
-                          const maxValue = Math.max(...analysisResult?.indicator?.values || []);
-                          const minValue = Math.min(...analysisResult?.indicator?.values || []);
-                          const range = maxValue - minValue;
-                          const height = range > 0 ? ((value - minValue) / range) * 70 + 10 : 50;
-                          
-                          // Determine color based on indicator type
-                          let color = '#00ffb3';
-                          if (analysisResult?.indicator?.type === 'RSI') {
-                            // Red if overbought, green if oversold, yellow otherwise
-                            color = value > 70 ? '#ff5252' : value < 30 ? '#00ffb3' : '#ffb74d';
-                          } else if (analysisResult?.indicator?.type === 'MACD') {
-                            // Red if negative, green if positive
-                            color = value < 0 ? '#ff5252' : '#00ffb3';
-                          }
-                          
-                          return (
-                            <Box 
-                              key={index}
-                              sx={{
-                                flex: 1,
-                                height: `${height}%`,
-                                backgroundColor: color,
-                                opacity: 0.7,
-                                mx: 0.5,
-                                borderTopLeftRadius: 2,
-                                borderTopRightRadius: 2,
-                                position: 'relative',
-                                '&:hover': {
-                                  opacity: 1,
-                                  '& .tooltip': {
-                                    display: 'block'
-                                  }
-                                }
-                              }}
-                            >
-                              <Box 
-                                className="tooltip"
-                                sx={{
-                                  display: 'none',
-                                  position: 'absolute',
-                                  bottom: '100%',
-                                  left: '50%',
-                                  transform: 'translateX(-50%)',
-                                  backgroundColor: 'rgba(0,0,0,0.8)',
-                                  color: 'white',
-                                  padding: '4px 8px',
-                                  borderRadius: 1,
-                                  fontSize: '0.7rem',
-                                  whiteSpace: 'nowrap',
-                                  zIndex: 10
-                                }}
-                              >
-                                {value.toFixed(2)}
-                              </Box>
-                            </Box>
-                          );
-                        })}
-                      </Box>
-                    </Box>
-                  )}
-                  
-                  {/* Additional data for specific indicators */}
-                  {analysisResult?.indicator?.type === 'Bollinger Bands' && analysisResult?.indicator?.percent_b !== undefined && (
-                    <Typography variant="body2" color="#9e9e9e">
-                      Percent B: {(analysisResult?.indicator?.percent_b * 100).toFixed(2)}%
-                    </Typography>
-                  )}
-                  
-                  {analysisResult?.indicator?.type === 'ATR' && analysisResult?.indicator?.atr_percentage !== undefined && (
-                    <Typography variant="body2" color="#9e9e9e">
-                      ATR Percentage: {analysisResult?.indicator?.atr_percentage.toFixed(2)}% of price
-                    </Typography>
-                  )}
-                </Box>
-              )}
-              
-              <Divider sx={{ my: 2, borderColor: 'rgba(255,255,255,0.1)' }} />
-              
-              <Box sx={{ mt: 3 }}>
-                <Typography variant="body2" color="#9e9e9e" sx={{ mb: 2 }}>
-                  This analysis is based on historical data and ARIMA model predictions for the next {analysisResult.days} days. Past performance is not indicative of future results.
-                </Typography>
-                
-                {!showAlternatives && !analysisResult.is_good_buy && (
-                  <Button 
-                    variant="outlined" 
-                    color="primary" 
-                    onClick={findAlternativeStocks}
-                    disabled={isLoadingAlternatives}
-                    startIcon={isLoadingAlternatives ? <CircularProgress size={20} /> : null}
-                    sx={{ mr: 2 }}
-                  >
-                    Find Alternatives
-                  </Button>
-                )}
-              </Box>
-              
-              {showAlternatives && alternativeStocks.length > 0 && (
-                <Box sx={{ mt: 3 }}>
-                  <Typography variant="subtitle1" sx={{ mb: 2 }}>
-                    Alternative Stocks to Consider:
-                  </Typography>
-                  <TableContainer component={Paper} sx={{ bgcolor: 'rgba(0,0,0,0.2)' }}>
-                    <Table size="small">
-                      <TableHead>
-                        <TableRow>
-                          <TableCell sx={{ color: 'white' }}>Symbol</TableCell>
-                          <TableCell sx={{ color: 'white' }}>Price</TableCell>
-                          <TableCell sx={{ color: 'white' }}>Expected Growth</TableCell>
-                          <TableCell sx={{ color: 'white' }}>Confidence</TableCell>
-                        </TableRow>
-                      </TableHead>
-                      <TableBody>
-                        {alternativeStocks.map((stock) => (
-                          <TableRow key={stock.symbol}>
-                            <TableCell sx={{ color: 'white' }}>{stock.symbol}</TableCell>
-                            <TableCell sx={{ color: 'white' }}>${stock.price.toFixed(2)}</TableCell>
-                            <TableCell sx={{ 
-                              color: stock.expected_growth > 0 ? '#69f0ae' : '#ff5252',
-                              display: 'flex',
-                              alignItems: 'center'
-                            }}>
-                              {stock.expected_growth > 0 ? <TrendingUpIcon fontSize="small" /> : <TrendingDownIcon fontSize="small" />}
-                              {Math.abs(stock.expected_growth).toFixed(2)}%
-                            </TableCell>
-                            <TableCell sx={{ color: 'white' }}>{(stock.confidence * 100).toFixed(0)}%</TableCell>
-                          </TableRow>
-                        ))}
-                      </TableBody>
-                    </Table>
-                  </TableContainer>
-                </Box>
-              )}
-            </Box>
-          )}
-        </DialogContent>
-        <DialogActions sx={{ borderTop: '1px solid rgba(255,255,255,0.1)', p: 2 }}>
-          <Button onClick={() => {
-            setAnalysisResult(null);
-            setShowAlternatives(false);
-          }} color="error">
-            Cancel
-          </Button>
-          <Button 
-            onClick={proceedWithPurchase} 
-            variant="contained" 
-            color={analysisResult?.is_good_buy ? "success" : "warning"}
-          >
-            {analysisResult?.is_good_buy ? "Proceed with Purchase" : "Buy Anyway"}
-          </Button>
-        </DialogActions>
-      </Dialog>
+      {/* Render the analysis dialog */}
+      {analysisResult && <AnalysisResultDialog />}
 
       <Box sx={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>
         <Card sx={{ 
@@ -1219,9 +1359,15 @@ export default function TradingPanel({ selectedStockFromParent }: TradingPanelPr
                 startIcon={isAnalyzing ? <CircularProgress size={20} /> : null}
                 sx={{ 
                   flexGrow: 1,
-                  bgcolor: theme.palette.primary.main,
+                  bgcolor: '#69f0ae',
+                  color: '#1a1a1a',
+                  fontWeight: 'bold',
                   '&:hover': {
-                    bgcolor: theme.palette.primary.dark,
+                    bgcolor: '#4caf50',
+                  },
+                  '&.Mui-disabled': {
+                    bgcolor: 'rgba(105, 240, 174, 0.3)',
+                    color: 'rgba(0, 0, 0, 0.5)'
                   }
                 }}
               >
@@ -1236,6 +1382,7 @@ export default function TradingPanel({ selectedStockFromParent }: TradingPanelPr
                   flexGrow: 1,
                   borderColor: theme.palette.error.main,
                   color: theme.palette.error.main,
+                  fontWeight: 'bold',
                   '&:hover': {
                     borderColor: theme.palette.error.dark,
                     bgcolor: 'rgba(211, 47, 47, 0.04)',

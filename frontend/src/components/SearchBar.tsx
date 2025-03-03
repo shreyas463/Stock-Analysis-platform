@@ -18,14 +18,17 @@ interface SearchResult {
 
 interface SearchBarProps {
   onStockSelect: (symbol: string) => void;
+  inputRef?: React.RefObject<HTMLInputElement>;
 }
 
-export default function SearchBar({ onStockSelect }: SearchBarProps) {
+export default function SearchBar({ onStockSelect, inputRef }: SearchBarProps) {
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState<SearchResult[]>([]);
   const [isOpen, setIsOpen] = useState(false);
   const [loading, setLoading] = useState(false);
   const searchRef = useRef<HTMLDivElement>(null);
+  const defaultInputRef = useRef<HTMLInputElement>(null);
+  const finalInputRef = inputRef || defaultInputRef;
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -86,50 +89,38 @@ export default function SearchBar({ onStockSelect }: SearchBarProps) {
   };
 
   return (
-    <Box sx={{ position: 'relative', zIndex: 1100 }}>
+    <Box ref={searchRef} sx={{ position: 'relative', width: '100%' }}>
       <TextField
         fullWidth
         placeholder="Search stocks..."
         value={searchQuery}
-        onChange={(e) => {
-          setSearchQuery(e.target.value);
-          setIsOpen(true);
-        }}
+        onChange={(e) => setSearchQuery(e.target.value)}
+        onFocus={() => setIsOpen(true)}
+        inputRef={finalInputRef}
         InputProps={{
           startAdornment: (
             <InputAdornment position="start">
-              <SearchIcon sx={{ color: '#9e9e9e' }} />
+              <SearchIcon />
             </InputAdornment>
           ),
         }}
         sx={{
           '& .MuiOutlinedInput-root': {
-            bgcolor: '#1E2132',
-            borderRadius: '12px',
-            transition: 'all 0.2s ease-in-out',
-            '& fieldset': { 
-              borderColor: 'rgba(255, 255, 255, 0.1)',
-              borderWidth: '2px'
+            backgroundColor: 'rgba(255, 255, 255, 0.05)',
+            borderRadius: 2,
+            '&:hover .MuiOutlinedInput-notchedOutline': {
+              borderColor: 'rgba(255, 255, 255, 0.3)',
             },
-            '&:hover fieldset': { 
-              borderColor: 'rgba(255, 255, 255, 0.2)',
-              borderWidth: '2px'
+            '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
+              borderColor: '#4caf50',
             },
-            '&.Mui-focused fieldset': { 
-              borderColor: '#69f0ae',
-              borderWidth: '2px'
-            }
           },
-          '& .MuiInputBase-input': { 
-            color: '#e0e0e0',
-            fontSize: '1.1rem',
-            py: 1.8,
-            px: 1,
-            '&::placeholder': {
-              color: '#9e9e9e',
-              opacity: 1
-            }
-          }
+          '& .MuiOutlinedInput-input': {
+            color: '#fff',
+          },
+          '& .MuiInputAdornment-root': {
+            color: 'rgba(255, 255, 255, 0.7)',
+          },
         }}
       />
       <Box sx={{ position: 'relative', height: 0 }}>

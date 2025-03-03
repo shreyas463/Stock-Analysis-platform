@@ -475,12 +475,16 @@ def buy(current_user):
         # If analyze_first is True, analyze the stock before buying
         if analyze_first:
             try:
+                logger.info(
+                    f"Analyzing stock {symbol} before buying with days={days} and indicator={indicator}")
                 # Initialize the stock analyzer
                 analyzer = StockAnalyzer()
 
                 # Analyze the stock with the specified days and indicator
                 analysis_result = analyzer.analyze_stock(
                     symbol, forecast_days=days, indicator=indicator)
+
+                logger.info(f"Analysis result: {analysis_result}")
 
                 # Prepare the analysis response
                 analysis = {
@@ -500,6 +504,7 @@ def buy(current_user):
                 if 'indicator_data' in analysis_result and analysis_result['indicator_data']:
                     analysis['indicator'] = analysis_result['indicator_data']
 
+                logger.info(f"Returning analysis to client: {analysis}")
                 return jsonify({'analysis': analysis})
             except Exception as e:
                 logger.error(f"Error analyzing stock: {str(e)}")
@@ -585,7 +590,12 @@ def buy(current_user):
                 logger.info(
                     f"Creating new position: {symbol} with {shares} shares for user {current_user.uid}")
                 new_doc = portfolio_ref.add(new_position)
-                logger.info(f"Created new position with ID: {new_doc.id}")
+                # The MockFirestore add method returns a tuple, not a document reference
+                if isinstance(new_doc, tuple):
+                    doc_id = new_doc[0]
+                    logger.info(f"Created new position with ID: {doc_id}")
+                else:
+                    logger.info(f"Created new position with ID: {new_doc.id}")
 
             # Log all portfolio documents after the update
             all_portfolios = list(portfolio_ref.stream())

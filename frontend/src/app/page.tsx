@@ -12,6 +12,7 @@ import StockerrLogo from '@/components/StockerrLogo';
 import PortfolioPieChart from '@/components/PortfolioPieChart';
 import { useAuth } from '@/contexts/AuthContext';
 import { useRouter } from 'next/navigation';
+import { auth } from '@/firebase/config';
 import SearchIcon from '@mui/icons-material/Search';
 import ShowChartIcon from '@mui/icons-material/ShowChart';
 import AccountBalanceWalletIcon from '@mui/icons-material/AccountBalanceWallet';
@@ -35,8 +36,8 @@ export default function Home() {
   const searchInputRef = useRef<HTMLInputElement>(null);
   
   // Portfolio data
-  const [cashBalance, setCashBalance] = useState<number>(10000.00);
-  const [stocksValue, setStocksValue] = useState<number>(0.00);
+  const [cashBalance, setCashBalance] = useState<number>(0);
+  const [stocksValue, setStocksValue] = useState<number>(0);
   const [portfolio, setPortfolio] = useState<any[]>([]);
 
   // Function to reset to homepage view
@@ -75,19 +76,50 @@ export default function Home() {
     }
   };
 
-  // Mock function to update portfolio data (in a real app, this would fetch from an API)
-  const updatePortfolioData = () => {
-    // Empty portfolio for now
-    setPortfolio([]);
-    setStocksValue(0);
-    setCashBalance(10000.00);
+  // Fetch real portfolio data from the API
+  const fetchPortfolioData = async () => {
+    try {
+      const token = await auth.currentUser?.getIdToken(true);
+      if (!token) {
+        console.error('No token available');
+        return;
+      }
+      
+      const response = await fetch(`${API_BASE_URL}/api/trading/balance`, {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+      
+      const data = await response.json();
+      console.log("Portfolio data received:", data);
+      
+      setCashBalance(data.cash_balance || 0);
+      setPortfolio(data.portfolio || []);
+      
+      // Calculate stocks value from portfolio positions
+      const calculatedStocksValue = Array.isArray(data.portfolio) 
+        ? data.portfolio.reduce((total: number, position: any) => {
+            return total + (position.position_value || 0);
+          }, 0) 
+        : 0;
+      
+      console.log("Portfolio value calculated:", calculatedStocksValue);
+      setStocksValue(calculatedStocksValue);
+      
+    } catch (error) {
+      console.error('Error fetching portfolio data:', error);
+    }
   };
   
   useEffect(() => {
     if (isAuthenticated) {
-      updatePortfolioData();
+      fetchPortfolioData();
+      // Refresh portfolio data every 10 seconds
+      const interval = setInterval(fetchPortfolioData, 10000);
+      return () => clearInterval(interval);
     }
-  }, [isAuthenticated]);
+  }, [isAuthenticated, user]);
 
   useEffect(() => {
     if (!isAuthenticated) {

@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { Box, Container, Typography, Paper, Button, CircularProgress, Grid, Divider, Fade, Tooltip, IconButton } from '@mui/material';
+import { Box, Container, Typography, Paper, Button, CircularProgress, Grid, Divider, Fade, Tooltip, IconButton, Card, CardContent } from '@mui/material';
 import SearchBar from '../components/SearchBar';
 import StockChart from '@/components/StockChart';
 import NewsSection from '../components/NewsSection';
@@ -16,6 +16,11 @@ import ShowChartIcon from '@mui/icons-material/ShowChart';
 import AccountBalanceWalletIcon from '@mui/icons-material/AccountBalanceWallet';
 import HomeIcon from '@mui/icons-material/Home';
 import RefreshIcon from '@mui/icons-material/Refresh';
+import DashboardIcon from '@mui/icons-material/Dashboard';
+import BarChartIcon from '@mui/icons-material/BarChart';
+import ForumIcon from '@mui/icons-material/Forum';
+import ExitToAppIcon from '@mui/icons-material/ExitToApp';
+import TestComponent from '@/components/TestComponent';
 
 const API_BASE_URL = 'http://localhost:5001';
 
@@ -78,361 +83,244 @@ export default function Home() {
     return null;
   }
 
+  // COMPLETELY NEW LAYOUT
   return (
     <Box sx={{ 
+      display: 'flex',
       minHeight: '100vh',
-      bgcolor: '#1E2132',
-      backgroundImage: 'radial-gradient(circle at 10% 20%, rgba(105, 240, 174, 0.03) 0%, transparent 20%)',
-      pb: 6
+      bgcolor: '#121212',
     }}>
-      <Container maxWidth="xl" sx={{ py: 4 }}>
-        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-          <Paper 
-            elevation={3} 
-            sx={{ 
-              p: 4, 
-              borderRadius: 2, 
-              bgcolor: '#2A2D3E',
-              border: '1px solid',
-              borderColor: 'rgba(255, 255, 255, 0.1)',
-              boxShadow: '0 8px 16px rgba(0, 0, 0, 0.2)'
-            }}
-          >
-            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
-              <Box 
-                sx={{ 
-                  display: 'flex', 
-                  alignItems: 'center', 
-                  cursor: 'pointer',
-                  transition: 'transform 0.2s',
-                  '&:hover': { 
-                    transform: 'scale(1.02)',
-                  }
-                }}
-                onClick={resetToHomepage}
-              >
-                <HomeIcon 
-                  sx={{ 
-                    color: '#69f0ae', 
-                    mr: 2, 
-                    fontSize: 28,
-                    animation: selectedStock ? 'pulse 2s infinite' : 'none',
-                    '@keyframes pulse': {
-                      '0%': { opacity: 0.7 },
-                      '50%': { opacity: 1 },
-                      '100%': { opacity: 0.7 },
-                    }
-                  }} 
-                />
-                <Typography 
-                  variant="h4" 
-                  component="h1" 
-                  sx={{ 
-                    color: '#69f0ae', 
-                    fontWeight: 'bold',
-                    letterSpacing: '-0.5px',
-                    textShadow: '0 2px 4px rgba(0,0,0,0.3)',
-                    background: 'linear-gradient(45deg, #69f0ae, #00bcd4)',
-                    WebkitBackgroundClip: 'text',
-                    WebkitTextFillColor: 'transparent'
-                  }}
-                >
-                  Dashboard
-                </Typography>
-                {selectedStock && (
-                  <Tooltip title="Return to homepage">
-                    <IconButton 
-                      size="small" 
-                      sx={{ ml: 1, color: '#69f0ae', opacity: 0.7 }}
-                      onClick={resetToHomepage}
-                    >
-                      <RefreshIcon />
-                    </IconButton>
-                  </Tooltip>
-                )}
-              </Box>
-              <Box sx={{ display: 'flex', gap: 2 }}>
-                <Button
-                  variant="contained"
-                  onClick={() => setActiveTab('market')}
-                  sx={{
-                    bgcolor: activeTab === 'market' ? '#69f0ae' : '#3A3D4E',
-                    color: activeTab === 'market' ? '#1E2132' : '#fff',
-                    borderRadius: '8px',
-                    px: 3,
-                    '&:hover': { bgcolor: activeTab === 'market' ? '#4caf50' : '#4A4D5E' }
-                  }}
-                >
-                  Market
-                </Button>
-                <Button
-                  variant="contained"
-                  onClick={() => setActiveTab('discussion')}
-                  sx={{
-                    bgcolor: activeTab === 'discussion' ? '#69f0ae' : '#3A3D4E',
-                    color: activeTab === 'discussion' ? '#1E2132' : '#fff',
-                    borderRadius: '8px',
-                    px: 3,
-                    '&:hover': { bgcolor: activeTab === 'discussion' ? '#4caf50' : '#4A4D5E' }
-                  }}
-                >
-                  Discussion
-                </Button>
-                <Button 
-                  variant="outlined" 
-                  onClick={logout}
-                  sx={{ 
-                    borderColor: '#ff5252',
-                    color: '#ff5252',
-                    borderRadius: '8px',
-                    px: 3,
-                    py: 1,
-                    '&:hover': { 
-                      bgcolor: 'rgba(255, 82, 82, 0.1)',
-                      borderColor: '#ff5252'
-                    }
-                  }}
-                >
-                  Logout
-                </Button>
-              </Box>
-            </Box>
-            <SearchBar onStockSelect={(symbol: string) => setSelectedStock(symbol)} />
-          </Paper>
-
-          {activeTab === 'market' ? (
-            <>
-              {selectedStock ? (
-                // After stock search - Side by side layout
-                <Fade in={Boolean(selectedStock)} timeout={500}>
-                  <Box sx={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>
-                    <Box sx={{ flex: '2 1 600px', minWidth: 0 }}>
-                      <Paper 
-                        elevation={3} 
-                        sx={{ 
-                          p: 4, 
-                          mb: 4, 
-                          borderRadius: 2, 
-                          bgcolor: '#2A2D3E',
-                          border: '1px solid',
-                          borderColor: 'rgba(255, 255, 255, 0.1)',
-                          boxShadow: '0 8px 16px rgba(0, 0, 0, 0.2)',
-                          overflow: 'hidden'
-                        }}
-                      >
-                        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
-                          <Typography 
-                            variant="h5" 
-                            sx={{ 
-                              color: '#69f0ae', 
-                              fontWeight: 'medium',
-                            }}
-                          >
-                            {selectedStock} Stock Chart
-                          </Typography>
-                          <Tooltip title="Return to homepage">
-                            <IconButton 
-                              size="small" 
-                              sx={{ color: '#9e9e9e' }}
-                              onClick={resetToHomepage}
-                            >
-                              <RefreshIcon />
-                            </IconButton>
-                          </Tooltip>
-                        </Box>
-                        <StockChart symbol={selectedStock} />
-                      </Paper>
-                      <Paper 
-                        elevation={3} 
-                        sx={{ 
-                          p: 4, 
-                          borderRadius: 2, 
-                          bgcolor: '#2A2D3E',
-                          border: '1px solid',
-                          borderColor: 'rgba(255, 255, 255, 0.1)',
-                          boxShadow: '0 8px 16px rgba(0, 0, 0, 0.2)'
-                        }}
-                      >
-                        <Typography 
-                          variant="h5" 
-                          gutterBottom 
-                          sx={{ 
-                            color: '#69f0ae', 
-                            fontWeight: 'medium',
-                            mb: 3
-                          }}
-                        >
-                          Latest News
-                        </Typography>
-                        <NewsSection symbol={selectedStock} />
-                      </Paper>
-                    </Box>
-
-                    <Box sx={{ flex: '1 1 350px', display: 'flex', flexDirection: 'column', gap: 4, minWidth: 0 }}>
-                      <Paper 
-                        elevation={3} 
-                        sx={{ 
-                          p: 4, 
-                          borderRadius: 2, 
-                          bgcolor: '#2A2D3E',
-                          border: '1px solid',
-                          borderColor: 'rgba(255, 255, 255, 0.1)',
-                          boxShadow: '0 8px 16px rgba(0, 0, 0, 0.2)'
-                        }}
-                      >
-                        <TopGainers />
-                      </Paper>
-                      
-                      <Paper 
-                        elevation={3} 
-                        sx={{ 
-                          p: 4, 
-                          borderRadius: 2, 
-                          bgcolor: '#2A2D3E',
-                          border: '1px solid',
-                          borderColor: 'rgba(255, 255, 255, 0.1)',
-                          boxShadow: '0 8px 16px rgba(0, 0, 0, 0.2)',
-                          flex: 1,
-                          display: 'flex',
-                          flexDirection: 'column'
-                        }}
-                      >
-                        <Typography 
-                          variant="h5" 
-                          gutterBottom 
-                          sx={{ 
-                            color: '#69f0ae', 
-                            fontWeight: 'medium',
-                            mb: 3
-                          }}
-                        >
-                          Trade Stocks
-                        </Typography>
-                        <Box sx={{ flex: 1 }}>
-                          <TradingPanel selectedStockFromParent={selectedStock} />
-                        </Box>
-                      </Paper>
-                    </Box>
-                  </Box>
-                </Fade>
-              ) : (
-                // Before stock search - Prominent trading panel layout
-                <Fade in={!selectedStock} timeout={500}>
-                  <Grid container spacing={4}>
-                    {/* Main trading panel - larger and more prominent */}
-                    <Grid item xs={12} md={8}>
-                      <Paper 
-                        elevation={3} 
-                        sx={{ 
-                          p: 4, 
-                          borderRadius: 2, 
-                          bgcolor: '#2A2D3E',
-                          border: '1px solid',
-                          borderColor: 'rgba(255, 255, 255, 0.1)',
-                          boxShadow: '0 8px 16px rgba(0, 0, 0, 0.2)',
-                          height: '100%'
-                        }}
-                      >
-                        <Box sx={{ 
-                          display: 'flex', 
-                          alignItems: 'center', 
-                          mb: 3,
-                          pb: 2,
-                          borderBottom: '1px solid rgba(255, 255, 255, 0.1)'
-                        }}>
-                          <AccountBalanceWalletIcon sx={{ color: '#69f0ae', mr: 1, fontSize: 28 }} />
-                          <Typography 
-                            variant="h5" 
-                            sx={{ 
-                              color: '#69f0ae', 
-                              fontWeight: 'medium'
-                            }}
-                          >
-                            Trading Platform
-                          </Typography>
-                        </Box>
-                        
-                        <Box sx={{ 
-                          display: 'flex', 
-                          flexDirection: 'column', 
-                          alignItems: 'center', 
-                          justifyContent: 'center',
-                          mb: 4,
-                          p: 4,
-                          borderRadius: 2,
-                          bgcolor: 'rgba(105, 240, 174, 0.05)',
-                          border: '1px dashed rgba(105, 240, 174, 0.3)',
-                          boxShadow: 'inset 0 0 20px rgba(105, 240, 174, 0.05)'
-                        }}>
-                          <SearchIcon sx={{ fontSize: 48, color: '#69f0ae', mb: 2 }} />
-                          <Typography variant="h6" sx={{ color: '#fff', mb: 1, textAlign: 'center', fontWeight: 'medium' }}>
-                            Search for a stock above to view charts and news
-                          </Typography>
-                          <Typography variant="body1" sx={{ color: '#9e9e9e', textAlign: 'center' }}>
-                            Meanwhile, you can manage your portfolio and place trades below
-                          </Typography>
-                        </Box>
-                        
-                        <TradingPanel selectedStockFromParent={selectedStock} />
-                      </Paper>
-                    </Grid>
-                    
-                    {/* Top Gainers section */}
-                    <Grid item xs={12} md={4}>
-                      <Paper 
-                        elevation={3} 
-                        sx={{ 
-                          p: 4, 
-                          borderRadius: 2, 
-                          bgcolor: '#2A2D3E',
-                          border: '1px solid',
-                          borderColor: 'rgba(255, 255, 255, 0.1)',
-                          boxShadow: '0 8px 16px rgba(0, 0, 0, 0.2)',
-                          height: '100%'
-                        }}
-                      >
-                        <Box sx={{ 
-                          display: 'flex', 
-                          alignItems: 'center', 
-                          mb: 3,
-                          pb: 2,
-                          borderBottom: '1px solid rgba(255, 255, 255, 0.1)'
-                        }}>
-                          <ShowChartIcon sx={{ color: '#69f0ae', mr: 1, fontSize: 28 }} />
-                          <Typography 
-                            variant="h5" 
-                            sx={{ 
-                              color: '#69f0ae', 
-                              fontWeight: 'medium'
-                            }}
-                          >
-                            Top Performers
-                          </Typography>
-                        </Box>
-                        <TopGainers />
-                      </Paper>
-                    </Grid>
-                  </Grid>
-                </Fade>
-              )}
-            </>
-          ) : (
-            <Paper 
-              elevation={3} 
-              sx={{ 
-                p: 4, 
-                borderRadius: 2, 
-                bgcolor: '#2A2D3E',
-                border: '1px solid',
-                borderColor: 'rgba(255, 255, 255, 0.1)',
-                boxShadow: '0 8px 16px rgba(0, 0, 0, 0.2)'
-              }}
-            >
-              <Discussion />
-            </Paper>
-          )}
+      {/* Sidebar */}
+      <Box sx={{ 
+        width: 240, 
+        bgcolor: '#1E1E1E', 
+        borderRight: '1px solid #333',
+        p: 2,
+        display: 'flex',
+        flexDirection: 'column'
+      }}>
+        <Box sx={{ 
+          display: 'flex', 
+          alignItems: 'center', 
+          mb: 4, 
+          cursor: 'pointer',
+          p: 2,
+          borderRadius: 2,
+          bgcolor: '#333',
+          '&:hover': { bgcolor: '#444' }
+        }} onClick={resetToHomepage}>
+          <StockerrLogo size={40} />
+          <Typography variant="h5" sx={{ ml: 2, color: '#fff', fontWeight: 'bold' }}>
+            Stockerr
+          </Typography>
         </Box>
-      </Container>
+        
+        <Button 
+          startIcon={<DashboardIcon />} 
+          sx={{ 
+            justifyContent: 'flex-start', 
+            color: '#fff', 
+            mb: 1,
+            p: 1.5,
+            borderRadius: 2,
+            bgcolor: activeTab === 'market' ? '#ff5252' : 'transparent',
+            '&:hover': { bgcolor: activeTab === 'market' ? '#ff5252' : '#333' }
+          }}
+          onClick={() => setActiveTab('market')}
+        >
+          Dashboard
+        </Button>
+        
+        <Button 
+          startIcon={<BarChartIcon />} 
+          sx={{ 
+            justifyContent: 'flex-start', 
+            color: '#fff', 
+            mb: 1,
+            p: 1.5,
+            borderRadius: 2,
+            '&:hover': { bgcolor: '#333' }
+          }}
+        >
+          Analytics
+        </Button>
+        
+        <Button 
+          startIcon={<ForumIcon />} 
+          sx={{ 
+            justifyContent: 'flex-start', 
+            color: '#fff', 
+            mb: 1,
+            p: 1.5,
+            borderRadius: 2,
+            bgcolor: activeTab === 'discussion' ? '#ff5252' : 'transparent',
+            '&:hover': { bgcolor: activeTab === 'discussion' ? '#ff5252' : '#333' }
+          }}
+          onClick={() => setActiveTab('discussion')}
+        >
+          Discussion
+        </Button>
+        
+        <Box sx={{ flexGrow: 1 }} />
+        
+        <Button 
+          startIcon={<ExitToAppIcon />} 
+          sx={{ 
+            justifyContent: 'flex-start', 
+            color: '#ff5252', 
+            p: 1.5,
+            borderRadius: 2,
+            '&:hover': { bgcolor: 'rgba(255, 82, 82, 0.1)' }
+          }}
+          onClick={logout}
+        >
+          Logout
+        </Button>
+      </Box>
+      
+      {/* Main Content */}
+      <Box sx={{ flexGrow: 1, p: 3, overflow: 'auto' }}>
+        <TestComponent />
+        
+        <Box sx={{ mb: 4 }}>
+          <Typography variant="h4" sx={{ color: '#fff', mb: 2 }}>
+            {selectedStock ? `${selectedStock} Dashboard` : 'Trading Dashboard'}
+          </Typography>
+          <SearchBar onStockSelect={(symbol: string) => setSelectedStock(symbol)} />
+        </Box>
+        
+        {activeTab === 'market' ? (
+          <>
+            {selectedStock ? (
+              // After stock search - Grid layout
+              <Grid container spacing={3}>
+                <Grid item xs={12} lg={8}>
+                  <Card sx={{ bgcolor: '#1E1E1E', mb: 3, borderRadius: 2 }}>
+                    <CardContent>
+                      <Typography variant="h6" sx={{ color: '#fff', mb: 2 }}>
+                        {selectedStock} Stock Chart
+                      </Typography>
+                      <StockChart symbol={selectedStock} />
+                    </CardContent>
+                  </Card>
+                  
+                  <Card sx={{ bgcolor: '#1E1E1E', borderRadius: 2 }}>
+                    <CardContent>
+                      <Typography variant="h6" sx={{ color: '#fff', mb: 2 }}>
+                        Latest News
+                      </Typography>
+                      <NewsSection symbol={selectedStock} />
+                    </CardContent>
+                  </Card>
+                </Grid>
+                
+                <Grid item xs={12} lg={4}>
+                  <Card sx={{ bgcolor: '#1E1E1E', mb: 3, borderRadius: 2 }}>
+                    <CardContent>
+                      <Typography variant="h6" sx={{ color: '#fff', mb: 2 }}>
+                        Top Performers
+                      </Typography>
+                      <TopGainers />
+                    </CardContent>
+                  </Card>
+                  
+                  <Card sx={{ bgcolor: '#1E1E1E', borderRadius: 2 }}>
+                    <CardContent>
+                      <Typography variant="h6" sx={{ color: '#fff', mb: 2 }}>
+                        Trade Stocks
+                      </Typography>
+                      <TradingPanel selectedStockFromParent={selectedStock} />
+                    </CardContent>
+                  </Card>
+                </Grid>
+              </Grid>
+            ) : (
+              // Before stock search - Different layout
+              <Grid container spacing={3}>
+                <Grid item xs={12} md={7}>
+                  <Card sx={{ 
+                    bgcolor: '#1E1E1E', 
+                    borderRadius: 2,
+                    height: '100%',
+                    border: '1px solid #333'
+                  }}>
+                    <CardContent>
+                      <Box sx={{ 
+                        display: 'flex', 
+                        alignItems: 'center', 
+                        mb: 3,
+                        pb: 2,
+                        borderBottom: '1px solid #333'
+                      }}>
+                        <AccountBalanceWalletIcon sx={{ color: '#ff5252', mr: 1, fontSize: 28 }} />
+                        <Typography variant="h6" sx={{ color: '#fff' }}>
+                          Trading Platform
+                        </Typography>
+                      </Box>
+                      
+                      <Box sx={{ 
+                        display: 'flex', 
+                        flexDirection: 'column', 
+                        alignItems: 'center', 
+                        justifyContent: 'center',
+                        mb: 4,
+                        p: 4,
+                        borderRadius: 2,
+                        bgcolor: '#2A2A2A',
+                        border: '1px dashed #444'
+                      }}>
+                        <SearchIcon sx={{ fontSize: 48, color: '#ff5252', mb: 2 }} />
+                        <Typography variant="h6" sx={{ color: '#fff', mb: 1, textAlign: 'center' }}>
+                          Search for a stock above to view charts and news
+                        </Typography>
+                        <Typography variant="body2" sx={{ color: '#aaa', textAlign: 'center' }}>
+                          Meanwhile, you can manage your portfolio and place trades below
+                        </Typography>
+                      </Box>
+                      
+                      <TradingPanel selectedStockFromParent={selectedStock} />
+                    </CardContent>
+                  </Card>
+                </Grid>
+                
+                <Grid item xs={12} md={5}>
+                  <Card sx={{ 
+                    bgcolor: '#1E1E1E', 
+                    borderRadius: 2,
+                    height: '100%',
+                    border: '1px solid #333'
+                  }}>
+                    <CardContent>
+                      <Box sx={{ 
+                        display: 'flex', 
+                        alignItems: 'center', 
+                        mb: 3,
+                        pb: 2,
+                        borderBottom: '1px solid #333'
+                      }}>
+                        <ShowChartIcon sx={{ color: '#ff5252', mr: 1, fontSize: 28 }} />
+                        <Typography variant="h6" sx={{ color: '#fff' }}>
+                          Top Performers
+                        </Typography>
+                      </Box>
+                      <TopGainers />
+                    </CardContent>
+                  </Card>
+                </Grid>
+              </Grid>
+            )}
+          </>
+        ) : (
+          <Card sx={{ bgcolor: '#1E1E1E', borderRadius: 2 }}>
+            <CardContent>
+              <Typography variant="h6" sx={{ color: '#fff', mb: 2 }}>
+                Discussion Forum
+              </Typography>
+              <Discussion />
+            </CardContent>
+          </Card>
+        )}
+      </Box>
     </Box>
   );
 } 

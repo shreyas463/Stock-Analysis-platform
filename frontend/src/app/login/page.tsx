@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
 import {
@@ -17,12 +17,14 @@ import {
   IconButton,
   InputAdornment,
   Paper,
-  Grid
+  Grid,
+  Chip
 } from '@mui/material';
 import { Visibility, VisibilityOff } from '@mui/icons-material';
 import AnimatedCandlestickBackground from '@/components/AnimatedCandlestickBackground';
 import StockerrLogo from '@/components/StockerrLogo';
 import CryptoPriceWidget from '@/components/CryptoPriceWidget';
+import LoginCharacter from '@/components/LoginCharacter';
 
 export default function LoginPage() {
   const [isLogin, setIsLogin] = useState(true);
@@ -35,12 +37,40 @@ export default function LoginPage() {
   const [rememberMe, setRememberMe] = useState(false);
   const { login, register, isAuthenticated } = useAuth();
   const router = useRouter();
+  
+  // States for the character animation
+  const [isPasswordFocused, setIsPasswordFocused] = useState(false);
+  const [isEmailFocused, setIsEmailFocused] = useState(false);
+  const [isTyping, setIsTyping] = useState(false);
+  const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+
+  // Handle typing animation
+  const handleTyping = () => {
+    setIsTyping(true);
+    
+    // Clear previous timeout
+    if (typingTimeoutRef.current) {
+      clearTimeout(typingTimeoutRef.current);
+    }
+    
+    // Set a timeout to stop the typing animation after 1 second of inactivity
+    typingTimeoutRef.current = setTimeout(() => {
+      setIsTyping(false);
+    }, 1000);
+  };
 
   useEffect(() => {
     console.log("Login page mounted, checking authentication status");
     if (isAuthenticated) {
       router.push('/');
     }
+    
+    // Cleanup typing timeout on unmount
+    return () => {
+      if (typingTimeoutRef.current) {
+        clearTimeout(typingTimeoutRef.current);
+      }
+    };
   }, [isAuthenticated, router]);
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -225,6 +255,37 @@ export default function LoginPage() {
           >
             <StockerrLogo size={90} />
             
+            <Typography 
+              component="h1" 
+              variant="h4" 
+              sx={{ 
+                color: 'white', 
+                fontWeight: 700, 
+                mt: 2,
+                mb: 1,
+                textAlign: 'center',
+              }}
+            >
+              Welcome
+            </Typography>
+            
+            <Typography 
+              variant="body1" 
+              sx={{ 
+                color: '#9e9e9e', 
+                mb: 3,
+                textAlign: 'center',
+              }}
+            >
+              Please sign in to continue
+            </Typography>
+            
+            {/* Add the LoginCharacter component */}
+            <LoginCharacter 
+              isPasswordFocused={isPasswordFocused} 
+              isTyping={isTyping} 
+            />
+            
             {error && (
               <Alert 
                 severity="error" 
@@ -256,7 +317,12 @@ export default function LoginPage() {
                   name="username"
                   autoComplete="username"
                   value={username}
-                  onChange={(e) => setUsername(e.target.value)}
+                  onChange={(e) => {
+                    setUsername(e.target.value);
+                    handleTyping();
+                  }}
+                  onFocus={() => setIsEmailFocused(true)}
+                  onBlur={() => setIsEmailFocused(false)}
                   sx={{
                     mb: 2,
                     '& .MuiOutlinedInput-root': {
@@ -289,7 +355,12 @@ export default function LoginPage() {
                 name="email"
                 autoComplete="email"
                 value={email}
-                onChange={(e) => setEmail(e.target.value)}
+                onChange={(e) => {
+                  setEmail(e.target.value);
+                  handleTyping();
+                }}
+                onFocus={() => setIsEmailFocused(true)}
+                onBlur={() => setIsEmailFocused(false)}
                 sx={{
                   mb: 2,
                   '& .MuiOutlinedInput-root': {
@@ -322,7 +393,12 @@ export default function LoginPage() {
                 id="password"
                 autoComplete={isLogin ? 'current-password' : 'new-password'}
                 value={password}
-                onChange={(e) => setPassword(e.target.value)}
+                onChange={(e) => {
+                  setPassword(e.target.value);
+                  handleTyping();
+                }}
+                onFocus={() => setIsPasswordFocused(true)}
+                onBlur={() => setIsPasswordFocused(false)}
                 InputProps={{
                   endAdornment: (
                     <InputAdornment position="end">
@@ -398,21 +474,6 @@ export default function LoginPage() {
                   '&.Mui-disabled': {
                     bgcolor: 'rgba(105, 240, 174, 0.3)',
                   },
-                  borderRadius: 2,
-                  boxShadow: '0 4px 10px rgba(105, 240, 174, 0.3)',
-                  position: 'relative',
-                  overflow: 'hidden',
-                  '&::after': {
-                    content: '""',
-                    position: 'absolute',
-                    top: 0,
-                    left: '-100%',
-                    width: '200%',
-                    height: '100%',
-                    background: 'linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent)',
-                    animation: 'shimmer 2s infinite',
-                    opacity: 0.5,
-                  },
                 }}
               >
                 {loading ? (
@@ -421,49 +482,104 @@ export default function LoginPage() {
                   isLogin ? 'Sign In' : 'Sign Up'
                 )}
               </Button>
-              <Box sx={{ textAlign: 'center' }}>
-                <Link
-                  component="button"
-                  variant="body2"
-                  onClick={() => {
+              <Box sx={{ display: 'flex', justifyContent: 'space-between', width: '100%' }}>
+                <Link 
+                  href="#" 
+                  variant="body2" 
+                  onClick={(e) => {
+                    e.preventDefault();
                     setIsLogin(!isLogin);
                     setError(null);
                   }}
-                  sx={{
+                  sx={{ 
                     color: '#69f0ae',
                     textDecoration: 'none',
                     '&:hover': {
                       textDecoration: 'underline',
-                    },
+                    }
                   }}
                 >
                   {isLogin ? "Don't have an account? Sign Up" : "Already have an account? Sign In"}
                 </Link>
+                {isLogin && (
+                  <Link 
+                    href="#" 
+                    variant="body2"
+                    onClick={(e) => e.preventDefault()}
+                    sx={{ 
+                      color: '#9e9e9e',
+                      textDecoration: 'none',
+                      '&:hover': {
+                        color: '#69f0ae',
+                        textDecoration: 'underline',
+                      }
+                    }}
+                  >
+                    Forgot password?
+                  </Link>
+                )}
               </Box>
             </Box>
           </Box>
           
-          {/* Crypto Widget */}
+          {/* Info Section */}
           <Box
             sx={{
-              display: { xs: 'none', md: 'block' },
-              width: '100%',
-              maxWidth: '450px',
-              position: 'fixed',
-              top: '40px',
-              right: '10px',
-              bottom: '20px',
-              zIndex: 9999,
-              overflowY: 'auto',
-              height: 'calc(100vh - 60px)',
-              '& > div': {
-                height: '100%',
-                display: 'flex',
-                flexDirection: 'column'
-              }
+              display: { xs: 'none', md: 'flex' },
+              flexDirection: 'column',
+              justifyContent: 'center',
+              maxWidth: '500px',
             }}
           >
-            <CryptoPriceWidget />
+            <Typography 
+              variant="h3" 
+              sx={{ 
+                color: 'white', 
+                fontWeight: 700, 
+                mb: 2,
+                textShadow: '0 2px 10px rgba(0, 0, 0, 0.5)',
+              }}
+            >
+              Trade Smarter, <br />Not Harder
+            </Typography>
+            <Typography 
+              variant="h6" 
+              sx={{ 
+                color: '#9e9e9e', 
+                mb: 4,
+                lineHeight: 1.6,
+              }}
+            >
+              Join thousands of traders using Stockerr to analyze, track, and trade stocks with confidence.
+            </Typography>
+            
+            <Box sx={{ mb: 4 }}>
+              <CryptoPriceWidget />
+            </Box>
+            
+            <Box
+              sx={{
+                display: 'flex',
+                flexWrap: 'wrap',
+                gap: 2,
+                mb: 4,
+              }}
+            >
+              {['Real-time Data', 'Smart Analysis', 'Portfolio Tracking', 'Trading Simulation'].map((feature) => (
+                <Chip
+                  key={feature}
+                  label={feature}
+                  sx={{
+                    bgcolor: 'rgba(105, 240, 174, 0.1)',
+                    color: '#69f0ae',
+                    border: '1px solid rgba(105, 240, 174, 0.2)',
+                    '&:hover': {
+                      bgcolor: 'rgba(105, 240, 174, 0.2)',
+                    },
+                  }}
+                />
+              ))}
+            </Box>
           </Box>
         </Box>
       </Container>

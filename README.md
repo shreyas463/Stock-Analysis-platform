@@ -132,6 +132,7 @@ A full-stack web application that replicates core features of Robinhood, built w
 ## 🔄 Recent Updates
 
 ### UI/UX Improvements
+- **Interactive Login Character**: Added a cute animated character that watches users type their username/email and politely closes its eyes during password entry
 - **Side-by-Side Layout**: Trading panel moved next to the chart for better usability
 - **Enhanced Search**: Improved search dropdown with better positioning
 - **Top Gainers Section**: Redesigned with fallback data to ensure content is always displayed
@@ -157,6 +158,21 @@ The application includes intelligent trading capabilities:
 - **Buy/Sell Recommendations**: Data-driven suggestions based on price analysis
 - **Trend Analysis**: Identification of potential market trends
 - **Fallback Mechanisms**: Ensures predictions are available even when API data is limited
+
+## 🎭 User Experience Enhancements
+
+### Interactive Login Character
+The login page features an engaging animated character that creates a more personalized experience:
+
+- **Reactive Eye Movements**: The character's eyes follow along as users type in username and email fields
+- **Privacy-Conscious Design**: Eyes automatically close when users type in the password field
+- **Subtle Animations**: Natural-looking eye movements and facial expressions that respond to user input
+- **Improved Engagement**: Creates a more memorable and enjoyable login experience
+
+### Crypto Widget Integration
+- Real-time cryptocurrency prices displayed alongside the login form
+- Allows users to track market movements even before logging in
+- Seamlessly integrated with the login flow
 
 ## 🤝 Contributing
 

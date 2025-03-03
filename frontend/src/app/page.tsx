@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { Box, Container, Typography, Paper, Button, CircularProgress } from '@mui/material';
+import { Box, Container, Typography, Paper, Button, CircularProgress, Grid } from '@mui/material';
 import SearchBar from '../components/SearchBar';
 import StockChart from '@/components/StockChart';
 import NewsSection from '../components/NewsSection';
@@ -11,6 +11,9 @@ import Discussion from '@/components/Discussion';
 import StockerrLogo from '@/components/StockerrLogo';
 import { useAuth } from '@/contexts/AuthContext';
 import { useRouter } from 'next/navigation';
+import SearchIcon from '@mui/icons-material/Search';
+import ShowChartIcon from '@mui/icons-material/ShowChart';
+import AccountBalanceWalletIcon from '@mui/icons-material/AccountBalanceWallet';
 
 const API_BASE_URL = 'http://localhost:5001';
 
@@ -144,126 +147,192 @@ export default function Home() {
 
         {activeTab === 'market' ? (
           <>
-            <Box sx={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>
-              <Box sx={{ flex: '2 1 600px', minWidth: 0 }}>
-                {selectedStock ? (
-                  <>
-                    <Paper 
-                      elevation={3} 
-                      sx={{ 
-                        p: 4, 
-                        mb: 4, 
-                        borderRadius: 2, 
-                        bgcolor: '#2A2D3E',
-                        border: '1px solid',
-                        borderColor: 'rgba(255, 255, 255, 0.1)',
-                        boxShadow: '0 4px 6px rgba(0, 0, 0, 0.1)'
-                      }}
-                    >
-                      <Typography 
-                        variant="h5" 
-                        gutterBottom 
-                        sx={{ 
-                          color: '#69f0ae', 
-                          fontWeight: 'medium',
-                          mb: 3
-                        }}
-                      >
-                        {selectedStock} Stock Chart
-                      </Typography>
-                      <StockChart symbol={selectedStock} />
-                    </Paper>
-                    <Paper 
-                      elevation={3} 
-                      sx={{ 
-                        p: 4, 
-                        borderRadius: 2, 
-                        bgcolor: '#2A2D3E',
-                        border: '1px solid',
-                        borderColor: 'rgba(255, 255, 255, 0.1)',
-                        boxShadow: '0 4px 6px rgba(0, 0, 0, 0.1)'
-                      }}
-                    >
-                      <Typography 
-                        variant="h5" 
-                        gutterBottom 
-                        sx={{ 
-                          color: '#69f0ae', 
-                          fontWeight: 'medium',
-                          mb: 3
-                        }}
-                      >
-                        Latest News
-                      </Typography>
-                      <NewsSection symbol={selectedStock} />
-                    </Paper>
-                  </>
-                ) : (
+            {selectedStock ? (
+              // After stock search - Side by side layout
+              <Box sx={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>
+                <Box sx={{ flex: '2 1 600px', minWidth: 0 }}>
                   <Paper 
                     elevation={3} 
                     sx={{ 
-                      p: 6, 
+                      p: 4, 
+                      mb: 4, 
+                      borderRadius: 2, 
+                      bgcolor: '#2A2D3E',
+                      border: '1px solid',
+                      borderColor: 'rgba(255, 255, 255, 0.1)',
+                      boxShadow: '0 4px 6px rgba(0, 0, 0, 0.1)'
+                    }}
+                  >
+                    <Typography 
+                      variant="h5" 
+                      gutterBottom 
+                      sx={{ 
+                        color: '#69f0ae', 
+                        fontWeight: 'medium',
+                        mb: 3
+                      }}
+                    >
+                      {selectedStock} Stock Chart
+                    </Typography>
+                    <StockChart symbol={selectedStock} />
+                  </Paper>
+                  <Paper 
+                    elevation={3} 
+                    sx={{ 
+                      p: 4, 
+                      borderRadius: 2, 
+                      bgcolor: '#2A2D3E',
+                      border: '1px solid',
+                      borderColor: 'rgba(255, 255, 255, 0.1)',
+                      boxShadow: '0 4px 6px rgba(0, 0, 0, 0.1)'
+                    }}
+                  >
+                    <Typography 
+                      variant="h5" 
+                      gutterBottom 
+                      sx={{ 
+                        color: '#69f0ae', 
+                        fontWeight: 'medium',
+                        mb: 3
+                      }}
+                    >
+                      Latest News
+                    </Typography>
+                    <NewsSection symbol={selectedStock} />
+                  </Paper>
+                </Box>
+
+                <Box sx={{ flex: '1 1 350px', display: 'flex', flexDirection: 'column', gap: 4, minWidth: 0 }}>
+                  <Paper 
+                    elevation={3} 
+                    sx={{ 
+                      p: 4, 
+                      borderRadius: 2, 
+                      bgcolor: '#2A2D3E',
+                      border: '1px solid',
+                      borderColor: 'rgba(255, 255, 255, 0.1)',
+                      boxShadow: '0 4px 6px rgba(0, 0, 0, 0.1)'
+                    }}
+                  >
+                    <TopGainers />
+                  </Paper>
+                  
+                  <Paper 
+                    elevation={3} 
+                    sx={{ 
+                      p: 4, 
                       borderRadius: 2, 
                       bgcolor: '#2A2D3E',
                       border: '1px solid',
                       borderColor: 'rgba(255, 255, 255, 0.1)',
                       boxShadow: '0 4px 6px rgba(0, 0, 0, 0.1)',
-                      textAlign: 'center'
+                      flex: 1,
+                      display: 'flex',
+                      flexDirection: 'column'
                     }}
                   >
-                    <Typography variant="h6" sx={{ color: '#9e9e9e' }}>
-                      Search for a stock to view its chart and news
+                    <Typography 
+                      variant="h5" 
+                      gutterBottom 
+                      sx={{ 
+                        color: '#69f0ae', 
+                        fontWeight: 'medium',
+                        mb: 3
+                      }}
+                    >
+                      Trade Stocks
                     </Typography>
+                    <Box sx={{ flex: 1 }}>
+                      <TradingPanel selectedStockFromParent={selectedStock} />
+                    </Box>
                   </Paper>
-                )}
+                </Box>
               </Box>
-
-              <Box sx={{ flex: '1 1 350px', display: 'flex', flexDirection: 'column', gap: 4, minWidth: 0 }}>
-                <Paper 
-                  elevation={3} 
-                  sx={{ 
-                    p: 4, 
-                    borderRadius: 2, 
-                    bgcolor: '#2A2D3E',
-                    border: '1px solid',
-                    borderColor: 'rgba(255, 255, 255, 0.1)',
-                    boxShadow: '0 4px 6px rgba(0, 0, 0, 0.1)'
-                  }}
-                >
-                  <TopGainers />
-                </Paper>
-                
-                <Paper 
-                  elevation={3} 
-                  sx={{ 
-                    p: 4, 
-                    borderRadius: 2, 
-                    bgcolor: '#2A2D3E',
-                    border: '1px solid',
-                    borderColor: 'rgba(255, 255, 255, 0.1)',
-                    boxShadow: '0 4px 6px rgba(0, 0, 0, 0.1)',
-                    flex: 1,
-                    display: 'flex',
-                    flexDirection: 'column'
-                  }}
-                >
-                  <Typography 
-                    variant="h5" 
-                    gutterBottom 
+            ) : (
+              // Before stock search - Prominent trading panel layout
+              <Grid container spacing={4}>
+                {/* Main trading panel - larger and more prominent */}
+                <Grid item xs={12} md={8}>
+                  <Paper 
+                    elevation={3} 
                     sx={{ 
-                      color: '#69f0ae', 
-                      fontWeight: 'medium',
-                      mb: 3
+                      p: 4, 
+                      borderRadius: 2, 
+                      bgcolor: '#2A2D3E',
+                      border: '1px solid',
+                      borderColor: 'rgba(255, 255, 255, 0.1)',
+                      boxShadow: '0 4px 6px rgba(0, 0, 0, 0.1)',
+                      height: '100%'
                     }}
                   >
-                    Trade Stocks
-                  </Typography>
-                  <Box sx={{ flex: 1 }}>
+                    <Box sx={{ display: 'flex', alignItems: 'center', mb: 3 }}>
+                      <AccountBalanceWalletIcon sx={{ color: '#69f0ae', mr: 1, fontSize: 28 }} />
+                      <Typography 
+                        variant="h5" 
+                        sx={{ 
+                          color: '#69f0ae', 
+                          fontWeight: 'medium'
+                        }}
+                      >
+                        Trading Platform
+                      </Typography>
+                    </Box>
+                    
+                    <Box sx={{ 
+                      display: 'flex', 
+                      flexDirection: 'column', 
+                      alignItems: 'center', 
+                      justifyContent: 'center',
+                      mb: 4,
+                      p: 3,
+                      borderRadius: 2,
+                      bgcolor: 'rgba(105, 240, 174, 0.05)',
+                      border: '1px dashed rgba(105, 240, 174, 0.3)'
+                    }}>
+                      <SearchIcon sx={{ fontSize: 40, color: '#69f0ae', mb: 2 }} />
+                      <Typography variant="h6" sx={{ color: '#fff', mb: 1, textAlign: 'center' }}>
+                        Search for a stock above to view charts and news
+                      </Typography>
+                      <Typography variant="body1" sx={{ color: '#9e9e9e', textAlign: 'center' }}>
+                        Meanwhile, you can manage your portfolio and place trades below
+                      </Typography>
+                    </Box>
+                    
                     <TradingPanel selectedStockFromParent={selectedStock} />
-                  </Box>
-                </Paper>
-              </Box>
-            </Box>
+                  </Paper>
+                </Grid>
+                
+                {/* Top Gainers section */}
+                <Grid item xs={12} md={4}>
+                  <Paper 
+                    elevation={3} 
+                    sx={{ 
+                      p: 4, 
+                      borderRadius: 2, 
+                      bgcolor: '#2A2D3E',
+                      border: '1px solid',
+                      borderColor: 'rgba(255, 255, 255, 0.1)',
+                      boxShadow: '0 4px 6px rgba(0, 0, 0, 0.1)',
+                      height: '100%'
+                    }}
+                  >
+                    <Box sx={{ display: 'flex', alignItems: 'center', mb: 3 }}>
+                      <ShowChartIcon sx={{ color: '#69f0ae', mr: 1, fontSize: 28 }} />
+                      <Typography 
+                        variant="h5" 
+                        sx={{ 
+                          color: '#69f0ae', 
+                          fontWeight: 'medium'
+                        }}
+                      >
+                        Top Performers
+                      </Typography>
+                    </Box>
+                    <TopGainers />
+                  </Paper>
+                </Grid>
+              </Grid>
+            )}
           </>
         ) : (
           <Paper 

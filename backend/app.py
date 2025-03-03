@@ -38,17 +38,160 @@ CORS(app, resources={
 })
 
 # Initialize Firebase Admin
-cred = credentials.Certificate('serviceAccountKey.json')
-firebase_admin.initialize_app(cred)
-db = firestore.client()
+try:
+    cred = credentials.Certificate('serviceAccountKey.json')
+    firebase_admin.initialize_app(cred)
+    db = firestore.client()
+    logger.info("Firebase initialized successfully")
+except Exception as e:
+    logger.warning(f"Firebase initialization failed: {str(e)}")
+    logger.warning("Running in development mode with mock Firebase")
+
+    # Create mock Firebase functionality
+    class MockFirestore:
+        def __init__(self):
+            self.collections = {}
+            self.next_id = 1  # Global ID counter for all collections
+
+        def collection(self, name):
+            if name not in self.collections:
+                self.collections[name] = MockCollection(name)
+            return self.collections[name]
+
+    class MockCollection:
+        def __init__(self, name):
+            self.name = name
+            self.documents = {}
+            self.next_id = 1  # Collection-specific ID counter
+
+        def document(self, doc_id=None):
+            if doc_id is None:
+                doc_id = f"auto-id-{self.next_id}"
+                self.next_id += 1
+
+            if doc_id not in self.documents:
+                self.documents[doc_id] = MockDocument(doc_id)
+            return self.documents[doc_id]
+
+        def where(self, field, op, value):
+            # Implement basic filtering
+            filtered_docs = []
+            for doc_id, doc in self.documents.items():
+                doc_data = doc.to_dict()
+                if field in doc_data:
+                    if op == '==' and doc_data[field] == value:
+                        filtered_docs.append(doc)
+                    elif op == '>' and doc_data[field] > value:
+                        filtered_docs.append(doc)
+                    elif op == '>=' and doc_data[field] >= value:
+                        filtered_docs.append(doc)
+                    elif op == '<' and doc_data[field] < value:
+                        filtered_docs.append(doc)
+                    elif op == '<=' and doc_data[field] <= value:
+                        filtered_docs.append(doc)
+
+            return MockQuery(filtered_docs)
+
+        def stream(self):
+            return list(self.documents.values())
+
+        def add(self, data):
+            doc_id = f"auto-id-{self.next_id}"
+            self.next_id += 1
+            doc = self.document(doc_id)
+            doc.set(data)
+            return doc
+
+    class MockDocument:
+        def __init__(self, doc_id):
+            self.id = doc_id
+            self.data = {}
+
+        def set(self, data, merge=False):
+            if merge:
+                self.data.update(data)
+            else:
+                self.data = data.copy() if isinstance(data, dict) else data
+            return self
+
+        def get(self):
+            return self
+
+        def to_dict(self):
+            return self.data.copy() if isinstance(self.data, dict) else self.data
+
+        def update(self, data):
+            if isinstance(self.data, dict) and isinstance(data, dict):
+                self.data.update(data)
+            return self
+
+    class MockQuery:
+        def __init__(self, documents=None):
+            self.documents = documents or []
+            self._filters = []
+
+        def stream(self):
+            # Apply all filters in sequence
+            filtered_docs = self.documents
+            for field, op, value in self._filters:
+                filtered_docs = [
+                    doc for doc in filtered_docs
+                    if field in doc.to_dict() and self._compare(doc.to_dict()[field], op, value)
+                ]
+            logger.info(
+                f"MockQuery stream returning {len(filtered_docs)} documents")
+            return filtered_docs
+
+        def where(self, field, op, value):
+            # Store the filter and return a new query
+            new_query = MockQuery(self.documents)
+            new_query._filters = self._filters.copy()
+            new_query._filters.append((field, op, value))
+            return new_query
+
+        def _compare(self, field_value, op, value):
+            if op == '==':
+                return field_value == value
+            elif op == '>':
+                return field_value > value
+            elif op == '>=':
+                return field_value >= value
+            elif op == '<':
+                return field_value < value
+            elif op == '<=':
+                return field_value <= value
+            return False
+
+    # Use mock implementations
+    db = MockFirestore()
+
+    # Mock auth module
+    class MockAuth:
+        def verify_id_token(self, token):
+            # For development, return a mock user
+            return {
+                "uid": "mock-user-id",
+                "email": "mock@example.com",
+                "name": "Mock User"
+            }
+
+    # Replace auth module with mock
+    auth = MockAuth()
 
 # API keys
 FINNHUB_KEY = os.getenv('FINNHUB_API_KEY')
 NEWS_API_KEY = os.getenv('NEWS_API_KEY')
 
-if not all([FINNHUB_KEY, NEWS_API_KEY]):
-    logger.error("Missing required API keys!")
-    raise ValueError("Missing required API keys!")
+# Use default values for development if keys are missing
+if not FINNHUB_KEY:
+    logger.warning(
+        "FINNHUB_API_KEY not found, using development mode with limited functionality")
+    FINNHUB_KEY = "sandbox_dummy_key"  # This won't work for real API calls
+
+if not NEWS_API_KEY:
+    logger.warning(
+        "NEWS_API_KEY not found, using development mode with mock news data")
+    NEWS_API_KEY = "dummy_key"  # This won't work for real API calls
 
 # Initialize Finnhub client
 finnhub_client = finnhub.Client(api_key=FINNHUB_KEY)
@@ -75,8 +218,23 @@ def token_required(f):
             # Verify the Firebase ID token
             decoded_token = auth.verify_id_token(token)
             uid = decoded_token['uid']
-            # Get user from Firebase
-            current_user = auth.get_user(uid)
+
+            # Create a user object with the necessary attributes
+            class MockUser:
+                def __init__(self, uid, email=None, display_name=None):
+                    self.uid = uid
+                    self.email = email
+                    self.display_name = display_name
+
+            # Check if we're using the real Firebase or our mock
+            if hasattr(auth, 'get_user'):
+                # Get user from Firebase
+                current_user = auth.get_user(uid)
+            else:
+                # Create a mock user
+                current_user = MockUser(uid, email=decoded_token.get(
+                    'email'), display_name=decoded_token.get('name'))
+
             logger.info(f"Authenticated user: {current_user.uid}")
         except Exception as e:
             logger.error(f"Token verification error: {str(e)}")
@@ -139,14 +297,6 @@ def login():
 @token_required
 def get_balance(current_user):
     try:
-        # Get user's portfolio from Firestore
-        portfolio_ref = db.collection('portfolios').where(
-            'user_id', '==', current_user.uid)
-        portfolio_docs = portfolio_ref.stream()
-
-        portfolio_data = []
-        total_value = 0
-
         # Get user's balance
         try:
             user_doc = db.collection('users').document(current_user.uid).get()
@@ -156,23 +306,57 @@ def get_balance(current_user):
             logger.error(f"Error fetching user balance: {str(e)}")
             balance = 0.0
 
+        # Initialize total value with cash balance
         total_value = balance
 
-        for doc in portfolio_docs:
-            position = doc.to_dict()
-            try:
+        # Get user's portfolio from Firestore
+        portfolio_data = []
+
+        try:
+            # Log the current user ID for debugging
+            logger.info(f"Fetching portfolio for user: {current_user.uid}")
+
+            # Get all portfolio documents for this user
+            portfolio_ref = db.collection('portfolios')
+
+            # Debug the contents of the portfolios collection
+            all_portfolios = list(portfolio_ref.stream())
+            logger.info(
+                f"Total documents in portfolios collection: {len(all_portfolios)}")
+            for doc in all_portfolios:
+                logger.info(f"Portfolio document: {doc.to_dict()}")
+
+            # Query for this user's portfolio
+            portfolio_query = portfolio_ref.where(
+                'user_id', '==', current_user.uid)
+            portfolio_docs = list(portfolio_query.stream())
+
+            logger.info(
+                f"Found {len(portfolio_docs)} portfolio documents for user {current_user.uid}")
+
+            for doc in portfolio_docs:
+                position = doc.to_dict()
+                logger.info(f"Processing portfolio position: {position}")
+
                 symbol = position.get('symbol', '')
                 shares = position.get('shares', 0)
 
                 if not symbol or shares <= 0:
+                    logger.info(f"Skipping invalid position: {position}")
                     continue
 
-                quote = finnhub_client.quote(symbol)
-                if quote and 'c' in quote:
-                    current_price = quote['c']
-                else:
-                    # Use last known price or default
-                    current_price = position.get('last_price', 100.0)
+                # Try to get current price from Finnhub
+                try:
+                    quote = finnhub_client.quote(symbol)
+                    if quote and 'c' in quote and quote['c'] > 0:
+                        current_price = quote['c']
+                    else:
+                        # Use last known price or default
+                        current_price = position.get('last_price', 0.0)
+                except Exception as e:
+                    logger.error(
+                        f"Error fetching quote for {symbol}: {str(e)}")
+                    current_price = position.get('last_price', 0.0)
 
                 position_value = current_price * shares
                 total_value += position_value
@@ -183,30 +367,27 @@ def get_balance(current_user):
                     'current_price': current_price,
                     'position_value': position_value
                 })
-            except Exception as e:
-                logger.error(
-                    f"Error processing position for {position.get('symbol', 'unknown')}: {str(e)}")
-                # Add position with estimated price
-                if 'symbol' in position and 'shares' in position and position['shares'] > 0:
-                    estimated_price = position.get('last_price', 100.0)
-                    estimated_value = estimated_price * position['shares']
-                    total_value += estimated_value
 
-                    portfolio_data.append({
-                        'symbol': position['symbol'],
-                        'shares': position['shares'],
-                        'current_price': estimated_price,
-                        'position_value': estimated_value,
-                        'is_estimated': True
-                    })
+                logger.info(
+                    f"Added position to portfolio data: {symbol}, {shares} shares, value: {position_value}")
+        except Exception as e:
+            logger.error(f"Error processing portfolio: {str(e)}")
+            import traceback
+            logger.error(traceback.format_exc())
 
-        return jsonify({
+        # Log the final response for debugging
+        response_data = {
             'cash_balance': balance,
             'portfolio': portfolio_data,
             'total_value': total_value
-        })
+        }
+        logger.info(f"Returning balance response: {response_data}")
+
+        return jsonify(response_data)
     except Exception as e:
-        logger.error(f"Error fetching balance: {str(e)}")
+        logger.error(f"Error in get_balance: {str(e)}")
+        import traceback
+        logger.error(traceback.format_exc())
         # Return default values instead of error
         return jsonify({
             'cash_balance': 0.0,
@@ -243,136 +424,146 @@ def add_funds(current_user):
 @app.route('/api/trading/buy', methods=['POST'])
 @token_required
 def buy(current_user):
-    data = request.get_json()
+    # Get request data
+    data = request.json
     symbol = data.get('symbol')
     shares = data.get('shares')
     analyze_first = data.get('analyze_first', False)
-    days = data.get('days', 14)  # Default to 14 days if not provided
+    days = data.get('days', 14)  # Default to 14 days if not specified
+    # Default to 'none' if not specified
+    indicator = data.get('indicator', 'none')
 
-    if not symbol or not shares or shares <= 0:
-        return jsonify({'error': 'Invalid request parameters'}), 400
+    if not symbol or not shares:
+        return jsonify({'error': 'Symbol and shares are required'}), 400
+
+    try:
+        # Convert shares to float
+        shares = float(shares)
+        if shares <= 0:
+            return jsonify({'error': 'Shares must be positive'}), 400
+    except ValueError:
+        return jsonify({'error': 'Shares must be a number'}), 400
 
     try:
         # Get current stock price
         quote = finnhub_client.quote(symbol)
-        price = quote['c']
-        total_cost = price * shares
+        current_price = quote['c']
 
-        # If analyze_first is True, perform ML analysis before purchase
+        if current_price == 0:
+            return jsonify({'error': 'Could not get current price for this stock'}), 400
+
+        # Calculate total cost
+        total_cost = current_price * shares
+
+        # If analyze_first is True, analyze the stock before buying
         if analyze_first:
             try:
-                # Pass the days parameter to the analyze_stock method
-                analysis_result = stock_analyzer.analyze_stock(
-                    symbol, forecast_days=days)
+                # Initialize the stock analyzer
+                analyzer = StockAnalyzer()
 
-                # Calculate the predicted price based on current price and expected growth
-                current_price = analysis_result.get('current_price', price)
-                expected_growth = analysis_result.get(
-                    'expected_growth_pct', 0.0)
-                predicted_price = current_price * (1 + expected_growth / 100)
+                # Analyze the stock with the specified days and indicator
+                analysis_result = analyzer.analyze_stock(
+                    symbol, forecast_days=days, indicator=indicator)
 
-                # Always return analysis result without completing purchase
-                # The frontend will handle the decision to proceed with purchase
-                return jsonify({
-                    'analysis': {
-                        'symbol': symbol,
-                        'current_price': price,
-                        'predicted_price': predicted_price,
-                        'total_cost': total_cost,
-                        'is_good_buy': analysis_result.get('is_good_buy', False),
-                        'expected_growth': analysis_result.get('expected_growth_pct', 0.0),
-                        'confidence': analysis_result.get('confidence_score', 50) / 100,
-                        'forecast': analysis_result.get('forecast_prices', []),
-                        'days': days  # Include the days parameter in the response
-                    }
-                })
+                # Prepare the analysis response
+                analysis = {
+                    'symbol': symbol,
+                    'current_price': analysis_result['current_price'],
+                    'predicted_price': analysis_result['current_price'] * (1 + analysis_result['expected_growth_pct'] / 100),
+                    'total_cost': total_cost,
+                    'is_good_buy': analysis_result['is_good_buy'],
+                    'expected_growth': analysis_result['expected_growth_pct'],
+                    # Convert to 0-1 scale
+                    'confidence': analysis_result['confidence_score'] / 100,
+                    'forecast': analysis_result['forecast_prices'],
+                    'days': days
+                }
+
+                # Add indicator data if available
+                if 'indicator_data' in analysis_result and analysis_result['indicator_data']:
+                    analysis['indicator'] = analysis_result['indicator_data']
+
+                return jsonify({'analysis': analysis})
             except Exception as e:
-                logger.error(f"Error analyzing stock {symbol}: {str(e)}")
-                # Return error to frontend
-                return jsonify({'error': f'Error analyzing stock: {str(e)}'}), 400
+                logger.error(f"Error analyzing stock: {str(e)}")
+                # Continue with the purchase if analysis fails
 
-        # Get user's current balance
+        # Check if user has enough balance
         user_ref = db.collection('users').document(current_user.uid)
         user_doc = user_ref.get()
-        current_balance = user_doc.to_dict().get('balance', 0.0)
+        user_data = user_doc.to_dict()
 
-        if total_cost > current_balance:
+        if not user_data or 'balance' not in user_data:
+            return jsonify({'error': 'User data not found'}), 404
+
+        balance = user_data['balance']
+
+        if balance < total_cost:
             return jsonify({'error': 'Insufficient funds'}), 400
 
-        # Update or create portfolio position
-        portfolio_ref = db.collection('portfolios')
+        # Update user's balance
+        new_balance = balance - total_cost
+        user_ref.update({'balance': new_balance})
 
-        # Fix the Firestore query
+        # Add stock to user's portfolio or update existing position
         try:
-            position_docs = portfolio_ref.where(
-                filter=firestore.FieldFilter('user_id', '==', current_user.uid)
-            ).where(
-                filter=firestore.FieldFilter('symbol', '==', symbol)
-            ).stream()
+            portfolio_ref = db.collection('portfolios')
+            portfolio_query = portfolio_ref.where(
+                'user_id', '==', current_user.uid).where('symbol', '==', symbol)
+            portfolio_docs = list(portfolio_query.stream())
 
-            position_list = list(position_docs)
+            if portfolio_docs:
+                # Update existing position
+                position_doc = portfolio_docs[0]
+                position_data = position_doc.to_dict()
+                existing_shares = position_data.get('shares', 0)
+                existing_cost = position_data.get('cost_basis', current_price)
+
+                # Calculate new average cost basis
+                new_shares = existing_shares + shares
+                new_cost_basis = (existing_cost * existing_shares +
+                                  current_price * shares) / new_shares
+
+                portfolio_ref.document(position_doc.id).update({
+                    'shares': new_shares,
+                    'cost_basis': new_cost_basis,
+                    'last_price': current_price,
+                    'updated_at': datetime.utcnow()
+                })
+            else:
+                # Create new position
+                portfolio_ref.add({
+                    'user_id': current_user.uid,
+                    'symbol': symbol,
+                    'shares': shares,
+                    'cost_basis': current_price,
+                    'last_price': current_price,
+                    'created_at': datetime.utcnow(),
+                    'updated_at': datetime.utcnow()
+                })
         except Exception as e:
-            logger.error(f"Error querying portfolio: {str(e)}")
-            # Fallback to a simpler query if the compound query fails
-            position_list = []
-            all_positions = portfolio_ref.where(
-                filter=firestore.FieldFilter('user_id', '==', current_user.uid)
-            ).stream()
-            for pos in all_positions:
-                pos_data = pos.to_dict()
-                if pos_data.get('symbol') == symbol:
-                    position_list.append(pos)
+            logger.error(f"Error updating portfolio: {str(e)}")
+            # Continue with transaction recording even if portfolio update fails
 
-        if position_list:
-            position_doc = position_list[0]
-            position_data = position_doc.to_dict()
-            current_shares = position_data.get('shares', 0)
-            current_avg_price = position_data.get('avg_price', 0)
-
-            # Calculate new average price
-            new_shares = current_shares + shares
-            new_avg_price = ((current_shares * current_avg_price) +
-                             (shares * price)) / new_shares
-
-            # Update position
-            portfolio_ref.document(position_doc.id).update({
-                'shares': new_shares,
-                'avg_price': new_avg_price,
-                'updated_at': datetime.utcnow()
-            })
-        else:
-            # Create new position
-            portfolio_ref.add({
-                'user_id': current_user.uid,
-                'symbol': symbol,
-                'shares': shares,
-                'avg_price': price,
-                'created_at': datetime.utcnow(),
-                'updated_at': datetime.utcnow()
-            })
-
-        # Create transaction record
-        db.collection('transactions').add({
+        # Record the transaction
+        transaction_ref = db.collection('transactions').add({
             'user_id': current_user.uid,
             'symbol': symbol,
             'shares': shares,
-            'price': price,
+            'price': current_price,
+            'total': total_cost,
             'type': 'buy',
             'created_at': datetime.utcnow()
         })
 
-        # Update user balance
-        new_balance = current_balance - total_cost
-        user_ref.update({'balance': new_balance})
-
         return jsonify({
-            'message': 'Stock purchased successfully',
+            'success': True,
+            'message': f'Successfully bought {shares} shares of {symbol}',
             'new_balance': new_balance
         })
-
     except Exception as e:
-        logger.error(f"Error processing buy order: {str(e)}")
-        return jsonify({'error': 'Failed to process purchase'}), 400
+        logger.error(f"Error buying stock: {str(e)}")
+        return jsonify({'error': f'Failed to buy stock: {str(e)}'}), 500
 
 
 @app.route('/api/trading/sell', methods=['POST'])
@@ -387,48 +578,62 @@ def sell_stock(current_user):
 
     try:
         # Check if user owns enough shares
-        portfolio_ref = db.collection('portfolios')
-        position_query = portfolio_ref.where(
-            'user_id', '==', current_user.uid).where('symbol', '==', symbol)
-        position_docs = position_query.stream()
+        try:
+            portfolio_ref = db.collection('portfolios')
+            position_query = portfolio_ref.where(
+                'user_id', '==', current_user.uid).where('symbol', '==', symbol)
+            position_docs = list(position_query.stream())
 
-        position_list = list(position_docs)
-        if not position_list or position_list[0].to_dict()['shares'] < shares:
-            return jsonify({'error': 'Insufficient shares'}), 400
+            if not position_docs or position_docs[0].to_dict()['shares'] < shares:
+                return jsonify({'error': 'Insufficient shares'}), 400
 
-        position_doc = position_list[0]
-        current_shares = position_doc.to_dict()['shares']
+            position_doc = position_docs[0]
+            position_data = position_doc.to_dict()
+            current_shares = position_data['shares']
 
-        # Get current stock price
-        quote = finnhub_client.quote(symbol)
-        price = quote['c']
-        total_value = price * shares
+            # Get current stock price
+            quote = finnhub_client.quote(symbol)
+            price = quote['c']
+            total_value = price * shares
 
-        # Update portfolio
-        if current_shares == shares:
-            portfolio_ref.document(position_doc.id).delete()
-        else:
-            portfolio_ref.document(position_doc.id).update({
-                'shares': current_shares - shares,
-                'updated_at': datetime.utcnow()
-            })
+            # Update portfolio
+            if current_shares == shares:
+                portfolio_ref.document(position_doc.id).delete()
+            else:
+                portfolio_ref.document(position_doc.id).update({
+                    'shares': current_shares - shares,
+                    'last_price': price,
+                    'updated_at': datetime.utcnow()
+                })
+        except Exception as e:
+            logger.error(f"Error updating portfolio for sell: {str(e)}")
+            return jsonify({'error': 'Failed to update portfolio'}), 400
 
         # Create transaction record
-        db.collection('transactions').add({
-            'user_id': current_user.uid,
-            'symbol': symbol,
-            'shares': shares,
-            'price': price,
-            'type': 'sell',
-            'created_at': datetime.utcnow()
-        })
+        try:
+            db.collection('transactions').add({
+                'user_id': current_user.uid,
+                'symbol': symbol,
+                'shares': shares,
+                'price': price,
+                'total': total_value,
+                'type': 'sell',
+                'created_at': datetime.utcnow()
+            })
+        except Exception as e:
+            logger.error(f"Error recording transaction for sell: {str(e)}")
+            # Continue with balance update even if transaction recording fails
 
         # Update user balance
-        user_ref = db.collection('users').document(current_user.uid)
-        user_doc = user_ref.get()
-        current_balance = user_doc.to_dict().get('balance', 0.0)
-        new_balance = current_balance + total_value
-        user_ref.update({'balance': new_balance})
+        try:
+            user_ref = db.collection('users').document(current_user.uid)
+            user_doc = user_ref.get()
+            current_balance = user_doc.to_dict().get('balance', 0.0)
+            new_balance = current_balance + total_value
+            user_ref.update({'balance': new_balance})
+        except Exception as e:
+            logger.error(f"Error updating balance for sell: {str(e)}")
+            return jsonify({'error': 'Failed to update balance'}), 400
 
         return jsonify({
             'message': 'Stock sold successfully',
@@ -893,36 +1098,26 @@ def get_stock_news(symbol):
 @app.route('/api/trading/analyze-stock', methods=['GET'])
 @token_required
 def analyze_stock(current_user):
-    symbol = request.args.get('symbol')
+    # Get the stock symbol from the request
+    symbol = request.args.get('symbol', '')
+    days = int(request.args.get('days', '14'))
+    indicator = request.args.get('indicator', 'none')
+
     if not symbol:
-        return jsonify({'error': 'Symbol is required'}), 400
+        return jsonify({'error': 'Stock symbol is required'}), 400
 
     try:
-        # Get the stock analysis
-        analysis_result = stock_analyzer.analyze_stock(symbol)
+        # Initialize the stock analyzer
+        analyzer = StockAnalyzer()
 
-        if not analysis_result.get('success', False):
-            return jsonify({'error': analysis_result.get('message', 'Analysis failed')}), 400
+        # Analyze the stock
+        analysis = analyzer.analyze_stock(
+            symbol, forecast_days=days, indicator=indicator)
 
-        # Get current stock price for reference
-        quote = finnhub_client.quote(symbol)
-        current_price = quote['c']
-
-        # Enhance the response with additional information
-        response = {
-            'symbol': symbol,
-            'current_price': current_price,
-            'is_good_buy': analysis_result['is_good_buy'],
-            'expected_growth': analysis_result['expected_growth_pct'],
-            # Convert to 0-1 scale
-            'confidence': analysis_result['confidence_score'] / 100,
-            'forecast': analysis_result['forecast_prices']
-        }
-
-        return jsonify(response)
+        return jsonify(analysis)
     except Exception as e:
-        logger.error(f"Error analyzing stock {symbol}: {str(e)}")
-        return jsonify({'error': f'Failed to analyze stock: {str(e)}'}), 400
+        logger.error(f"Error analyzing stock: {str(e)}")
+        return jsonify({'error': 'Failed to analyze stock'}), 500
 
 
 @app.route('/api/trading/alternative-stocks', methods=['GET'])
@@ -973,6 +1168,31 @@ def get_stock_quote(current_user):
     except Exception as e:
         logger.error(f"Error fetching quote for {symbol}: {str(e)}")
         return jsonify({'error': 'Failed to fetch stock quote'}), 500
+
+
+# Test endpoint without authentication for development
+@app.route('/api/test/analyze-stock', methods=['GET'])
+def test_analyze_stock():
+    # Get the stock symbol from the request
+    symbol = request.args.get('symbol', '')
+    days = int(request.args.get('days', '14'))
+    indicator = request.args.get('indicator', 'none')
+
+    if not symbol:
+        return jsonify({'error': 'Stock symbol is required'}), 400
+
+    try:
+        # Initialize the stock analyzer
+        analyzer = StockAnalyzer()
+
+        # Analyze the stock
+        analysis = analyzer.analyze_stock(
+            symbol, forecast_days=days, indicator=indicator)
+
+        return jsonify(analysis)
+    except Exception as e:
+        logger.error(f"Error analyzing stock: {str(e)}")
+        return jsonify({'error': 'Failed to analyze stock'}), 500
 
 
 if __name__ == '__main__':

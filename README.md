@@ -131,7 +131,27 @@ A full-stack web application that replicates core features of Robinhood, built w
 
 ## 🔄 Recent Updates
 
-### UI/UX Improvements
+### Performance & Reliability Improvements
+- **Portfolio Calculations**: Enhanced accuracy of portfolio value calculations
+- **Price Loading Optimization**: 
+  - Removed unnecessary re-renders
+  - Extended update intervals from 10s to 15s
+  - Eliminated redundant console logs
+  - Simplified portfolio value calculations
+
+### ML Analysis Enhancements
+- **Analysis Logic**: Separated ML analysis from buy logic for better maintainability
+- **Error Handling**: Improved error handling for analysis responses
+- **State Management**: Enhanced state clearing after successful purchases
+- **Type Safety**: Added comprehensive type checking for portfolio calculations
+
+### UI/UX Refinements
+- **Market Overview**: Streamlined market data display with unified section
+- **Portfolio Display**: Improved portfolio value accuracy and presentation
+- **Trading Interface**: Enhanced buy/sell flow with clearer feedback
+- **Layout Optimization**: Removed duplicate sections for cleaner interface
+
+### Previous Updates
 - **Interactive Login Character**: Added a cute animated character that watches users type their username/email and politely closes its eyes during password entry
 - **Side-by-Side Layout**: Trading panel moved next to the chart for better usability
 - **Enhanced Search**: Improved search dropdown with better positioning

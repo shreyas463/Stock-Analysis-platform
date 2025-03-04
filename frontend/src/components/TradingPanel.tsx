@@ -1957,6 +1957,7 @@ export default function TradingPanel({ selectedStockFromParent }: TradingPanelPr
                   height: '56px',
                   fontSize: '16px',
                   borderRadius: '8px',
+                  textTransform: 'uppercase',
                   '&:hover': {
                     bgcolor: '#4caf50',
                   },
@@ -1979,6 +1980,7 @@ export default function TradingPanel({ selectedStockFromParent }: TradingPanelPr
                   height: '56px',
                   fontSize: '16px',
                   borderRadius: '8px',
+                  textTransform: 'uppercase',
                   '&:hover': {
                     backgroundColor: '#d32f2f',
                   }

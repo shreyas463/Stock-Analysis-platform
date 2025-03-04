@@ -1591,8 +1591,6 @@ export default function TradingPanel({ selectedStockFromParent }: TradingPanelPr
 
       <Box sx={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>
         <Card sx={{ 
-          flexGrow: 1, 
-          minWidth: '300px', 
           bgcolor: '#242424',
           borderRadius: 2,
           border: '1px solid',
@@ -1600,35 +1598,83 @@ export default function TradingPanel({ selectedStockFromParent }: TradingPanelPr
           boxShadow: '0 4px 6px rgba(0, 0, 0, 0.1)'
         }}>
           <CardContent>
-            <Typography variant="h6" gutterBottom sx={{ color: '#69f0ae', fontWeight: 'medium', mb: 3 }}>
+            <Typography variant="h6" gutterBottom sx={{ 
+              color: '#69f0ae', 
+              fontWeight: 'medium', 
+              mb: 3,
+              display: 'flex',
+              alignItems: 'center',
+              gap: 1
+            }}>
+              <AccountBalanceWalletIcon />
               Account Overview
             </Typography>
-            <Box sx={{ mt: 2, mb: 4 }}>
-              <Typography variant="body1" sx={{ color: '#e0e0e0', mb: 2, display: 'flex', justifyContent: 'space-between' }}>
-                <span>Cash Balance:</span>
-                <span style={{ color: '#69f0ae', fontWeight: 500 }}>${(balance || 0).toFixed(2)}</span>
+            <Box sx={{ 
+              mt: 2, 
+              mb: 4,
+              display: 'grid',
+              gridTemplateColumns: '1fr auto',
+              rowGap: 2.5
+            }}>
+              <Typography variant="body1" sx={{ color: '#e0e0e0', fontSize: '1.05rem' }}>
+                Cash Balance:
               </Typography>
-              <Typography variant="body1" sx={{ color: '#e0e0e0', mb: 2, display: 'flex', justifyContent: 'space-between' }}>
-                <span>Portfolio Value:</span>
-                <span style={{ color: '#69f0ae', fontWeight: 500 }}>${((totalValue || 0) - (balance || 0)).toFixed(2)}</span>
+              <Typography variant="body1" sx={{ 
+                color: '#69f0ae', 
+                fontWeight: 600, 
+                textAlign: 'right',
+                fontSize: '1.05rem'
+              }}>
+                ${(balance || 0).toFixed(2)}
               </Typography>
-              <Typography variant="body1" sx={{ color: '#e0e0e0', display: 'flex', justifyContent: 'space-between' }}>
-                <span>Total Value:</span>
-                <span style={{ color: '#69f0ae', fontWeight: 500 }}>${(totalValue || 0).toFixed(2)}</span>
+              
+              <Typography variant="body1" sx={{ color: '#e0e0e0', fontSize: '1.05rem' }}>
+                Portfolio Value:
+              </Typography>
+              <Typography variant="body1" sx={{ 
+                color: '#69f0ae', 
+                fontWeight: 600, 
+                textAlign: 'right',
+                fontSize: '1.05rem'
+              }}>
+                ${((totalValue || 0) - (balance || 0)).toFixed(2)}
+              </Typography>
+              
+              <Typography variant="body1" sx={{ 
+                color: '#e0e0e0', 
+                borderTop: '1px solid rgba(255, 255, 255, 0.1)',
+                paddingTop: 2,
+                fontSize: '1.1rem',
+                fontWeight: 500
+              }}>
+                Total Value:
+              </Typography>
+              <Typography variant="body1" sx={{ 
+                color: '#69f0ae', 
+                fontWeight: 700, 
+                textAlign: 'right',
+                borderTop: '1px solid rgba(255, 255, 255, 0.1)',
+                paddingTop: 2,
+                fontSize: '1.1rem'
+              }}>
+                ${(totalValue || 0).toFixed(2)}
               </Typography>
             </Box>
             <Button
               variant="contained"
+              fullWidth
               onClick={() => setOpenAddFunds(true)}
+              startIcon={<AddIcon />}
               sx={{ 
                 bgcolor: '#69f0ae',
                 color: '#1a1a1a',
                 '&:hover': { bgcolor: '#4caf50' },
                 borderRadius: 2,
                 textTransform: 'none',
-                px: 4,
-                py: 1.5,
-                fontWeight: 'medium'
+                height: '56px',
+                fontSize: '16px',
+                fontWeight: 'bold',
+                boxShadow: '0 4px 6px rgba(0, 0, 0, 0.2)'
               }}
             >
               Add Funds
@@ -1648,16 +1694,13 @@ export default function TradingPanel({ selectedStockFromParent }: TradingPanelPr
           <CardContent sx={{ p: 2, '&:last-child': { pb: 2 } }}>
             <Typography variant="h6" sx={{ 
               mb: 2, 
-              color: '#69f0ae',
-              fontWeight: 'bold',
-              fontSize: '1.1rem',
-              borderBottom: '2px solid rgba(105, 240, 174, 0.3)',
-              paddingBottom: '6px',
+              color: '#69f0ae', 
+              fontWeight: 'medium',
               display: 'flex',
               alignItems: 'center',
               gap: 1
             }}>
-              <TrendingUpIcon fontSize="small" />
+              <TrendingUpIcon />
               Trade Stocks
             </Typography>
             

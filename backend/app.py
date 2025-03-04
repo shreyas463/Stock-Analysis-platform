@@ -659,31 +659,42 @@ def sell_stock(current_user):
             logger.error(f"Invalid shares quantity: {shares}")
             return jsonify({'error': 'Shares must be greater than 0'}), 400
 
-        # Check if user owns enough shares
-        portfolio_ref = db.collection('portfolios')
-        position_query = portfolio_ref.where(
-            'user_id', '==', current_user.uid).where('symbol', '==', symbol)
-        position_docs = list(position_query.stream())
+        # Check if user owns enough shares - use separate queries to avoid Filter type issues
+        try:
+            portfolio_ref = db.collection('portfolios')
+            # First filter by user_id
+            user_positions = list(portfolio_ref.where(
+                'user_id', '==', current_user.uid).stream())
 
-        logger.info(
-            f"Found {len(position_docs)} matching positions for user {current_user.uid}, symbol {symbol}")
+            # Then manually filter by symbol
+            position_docs = []
+            for doc in user_positions:
+                doc_data = doc.to_dict()
+                if doc_data.get('symbol') == symbol:
+                    position_docs.append(doc)
 
-        if not position_docs:
-            logger.error(
-                f"User {current_user.uid} does not own any shares of {symbol}")
-            return jsonify({'error': f'You do not own any shares of {symbol}'}), 400
+            logger.info(
+                f"Found {len(position_docs)} matching positions for user {current_user.uid}, symbol {symbol}")
 
-        position_doc = position_docs[0]
-        position_data = position_doc.to_dict()
-        current_shares = position_data.get('shares', 0)
+            if not position_docs:
+                logger.error(
+                    f"User {current_user.uid} does not own any shares of {symbol}")
+                return jsonify({'error': f'You do not own any shares of {symbol}'}), 400
 
-        logger.info(
-            f"User owns {current_shares} shares of {symbol}, attempting to sell {shares}")
+            position_doc = position_docs[0]
+            position_data = position_doc.to_dict()
+            current_shares = position_data.get('shares', 0)
 
-        if current_shares < shares:
-            logger.error(
-                f"Insufficient shares: user has {current_shares}, trying to sell {shares}")
-            return jsonify({'error': f'You only own {current_shares} shares of {symbol}'}), 400
+            logger.info(
+                f"User owns {current_shares} shares of {symbol}, attempting to sell {shares}")
+
+            if current_shares < shares:
+                logger.error(
+                    f"Insufficient shares: user has {current_shares}, trying to sell {shares}")
+                return jsonify({'error': f'You only own {current_shares} shares of {symbol}'}), 400
+        except Exception as e:
+            logger.error(f"Error checking user portfolio: {str(e)}")
+            return jsonify({'error': f'Failed to check portfolio: {str(e)}'}), 400
 
         # Get current stock price
         try:
@@ -720,7 +731,7 @@ def sell_stock(current_user):
                 })
         except Exception as e:
             logger.error(f"Error updating portfolio: {str(e)}")
-            return jsonify({'error': 'Failed to update portfolio'}), 400
+            return jsonify({'error': f'Failed to update portfolio: {str(e)}'}), 400
 
         # Create transaction record
         try:
@@ -755,7 +766,7 @@ def sell_stock(current_user):
             user_ref.update({'balance': new_balance})
         except Exception as e:
             logger.error(f"Error updating balance: {str(e)}")
-            return jsonify({'error': 'Failed to update balance'}), 400
+            return jsonify({'error': f'Failed to update balance: {str(e)}'}), 400
 
         # Return success response
         return jsonify({

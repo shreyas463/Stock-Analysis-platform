@@ -1045,17 +1045,21 @@ export default function TradingPanel({ selectedStockFromParent }: TradingPanelPr
         return false;
       }
       
-      // Make the API call
+      // Make the API call with explicit string conversion to ensure proper JSON serialization
+      const payload = {
+        symbol: stockSymbol.trim(),
+        shares: Number(sharesNum) // Ensure it's a number not a string
+      };
+      
+      console.log('Sending sell request with payload:', payload);
+      
       const response = await fetch(`http://localhost:5001/api/trading/sell`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${token}`
         },
-        body: JSON.stringify({
-          symbol: stockSymbol,
-          shares: sharesNum
-        })
+        body: JSON.stringify(payload)
       });
       
       const data = await response.json();
@@ -1073,19 +1077,63 @@ export default function TradingPanel({ selectedStockFromParent }: TradingPanelPr
         setSellShares('');
         setSelectedPortfolioStock(null);
         
-        // Force immediate refresh
-        await fetchBalance();
-        await fetchTransactions();
-        await fetchSoldStocks();
+        // Update the UI manually before fetching from the server to avoid flicker
+        setBalance(prev => prev + (stockInPortfolio.current_price * sharesNum));
+        setPortfolio(prev => {
+          const updatedPortfolio = [...prev];
+          const stockIndex = updatedPortfolio.findIndex(
+            item => item.symbol.toUpperCase() === stockSymbol.toUpperCase()
+          );
+          
+          if (stockIndex !== -1) {
+            const updatedShares = updatedPortfolio[stockIndex].shares - sharesNum;
+            if (updatedShares <= 0) {
+              // Remove the stock from portfolio if no shares left
+              updatedPortfolio.splice(stockIndex, 1);
+            } else {
+              // Update the stock with new share count
+              updatedPortfolio[stockIndex] = {
+                ...updatedPortfolio[stockIndex],
+                shares: updatedShares,
+                position_value: updatedPortfolio[stockIndex].current_price * updatedShares
+              };
+            }
+          }
+          
+          return updatedPortfolio;
+        });
         
-        // Force another refresh after a delay to ensure everything is updated
-        setTimeout(() => {
-          setRefreshKey(prev => prev + 1);
+        // Add to transactions manually
+        const newTransaction = {
+          id: `temp-${Date.now()}`,
+          symbol: stockSymbol,
+          shares: sharesNum,
+          price: stockInPortfolio.current_price,
+          type: 'sell',
+          total: stockInPortfolio.current_price * sharesNum,
+          created_at: new Date().toISOString()
+        };
+        
+        setTransactions(prev => [newTransaction, ...prev]);
+        setSoldStocks(prev => [newTransaction, ...prev]);
+        
+        // Force a refresh of all data from the server after a short delay
+        setTimeout(async () => {
+          try {
+            await fetchBalance();
+            await fetchTransactions();
+            await fetchSoldStocks();
+            setRefreshKey(prev => prev + 1);
+          } catch (err) {
+            console.error('Error refreshing data after sell:', err);
+          }
         }, 1000);
         
         return true;
       } else {
-        setError(data.error || 'Failed to sell shares');
+        const errorMessage = data.error || 'Failed to sell shares';
+        console.error('Sell API error:', errorMessage);
+        setError(errorMessage);
         return false;
       }
     } catch (error) {
@@ -1894,7 +1942,8 @@ export default function TradingPanel({ selectedStockFromParent }: TradingPanelPr
               display: 'grid', 
               gridTemplateColumns: '1fr 1fr', 
               gap: 2,
-              mt: 2
+              mt: 2,
+              mb: 2
             }}>
               <Button 
                 variant="contained" 
@@ -1905,7 +1954,7 @@ export default function TradingPanel({ selectedStockFromParent }: TradingPanelPr
                   bgcolor: '#69f0ae',
                   color: '#1a1a1a',
                   fontWeight: 'bold',
-                  height: '48px',
+                  height: '56px',
                   fontSize: '16px',
                   borderRadius: '8px',
                   '&:hover': {
@@ -1917,22 +1966,21 @@ export default function TradingPanel({ selectedStockFromParent }: TradingPanelPr
                   }
                 }}
               >
-                {isAnalyzing ? 'Analyzing...' : 'BUY'}
+                {isAnalyzing ? 'ANALYZING...' : 'BUY'}
               </Button>
               
               <Button
-                variant="outlined"
+                variant="contained"
                 onClick={handleOpenSellDialog}
                 sx={{
-                  color: '#ff5252',
-                  borderColor: '#ff5252',
-                  height: '48px',
-                  fontSize: '16px',
+                  bgcolor: '#ff5252',
+                  color: '#ffffff',
                   fontWeight: 'bold',
+                  height: '56px',
+                  fontSize: '16px',
                   borderRadius: '8px',
                   '&:hover': {
-                    backgroundColor: 'rgba(255, 82, 82, 0.08)',
-                    borderColor: '#ff5252'
+                    backgroundColor: '#d32f2f',
                   }
                 }}
               >

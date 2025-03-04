@@ -128,6 +128,11 @@ export default function TradingPanel({ selectedStockFromParent }: TradingPanelPr
   const [isLoadingPrice, setIsLoadingPrice] = useState(false);
   const [selectedIndicator, setSelectedIndicator] = useState<string>('none');
   const [refreshKey, setRefreshKey] = useState(0);
+  const [openSellConfirmation, setOpenSellConfirmation] = useState(false);
+  const [soldStocks, setSoldStocks] = useState<Transaction[]>([]);
+  const [openSellDialog, setOpenSellDialog] = useState(false);
+  const [selectedPortfolioStock, setSelectedPortfolioStock] = useState<PortfolioPosition | null>(null);
+  const [sellShares, setSellShares] = useState('');
 
   // Log when analysisResult changes
   useEffect(() => {
@@ -197,12 +202,57 @@ export default function TradingPanel({ selectedStockFromParent }: TradingPanelPr
     }
   };
 
+  const fetchSoldStocks = async () => {
+    try {
+      const token = await getToken();
+      if (!token) return;
+      
+      console.log('Fetching sold stocks...');
+      
+      const response = await fetch('http://localhost:5001/api/trading/transactions', {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+      
+      if (!response.ok) {
+        console.error('Failed to fetch transactions:', response.status, response.statusText);
+        throw new Error('Failed to fetch transactions');
+      }
+      
+      const data = await response.json();
+      console.log('All transactions:', data);
+      
+      // Filter only sell transactions - ensure case insensitive comparison
+      const sellTransactions = data.filter((transaction: Transaction) => 
+        transaction.type && transaction.type.toLowerCase() === 'sell'
+      );
+      
+      console.log('Filtered sell transactions:', sellTransactions);
+      setSoldStocks(sellTransactions);
+    } catch (error) {
+      console.error('Error fetching sold stocks:', error);
+    }
+  };
+
   useEffect(() => {
-    fetchBalance();
-    fetchTransactions();
-    const interval = setInterval(fetchBalance, 10000); // Update every 10 seconds
+    const fetchData = async () => {
+      try {
+        console.log('Refreshing data...', refreshKey); // Debug log
+        await fetchBalance();
+        await fetchTransactions();
+        await fetchSoldStocks();
+      } catch (error) {
+        console.error('Error fetching data:', error);
+      }
+    };
+    
+    fetchData();
+    
+    // Use a less frequent interval to reduce flickering
+    const interval = setInterval(fetchData, 30000); // Update every 30 seconds instead of 15
     return () => clearInterval(interval);
-  }, []);
+  }, [refreshKey]); // Only depend on refreshKey to control when to refresh
 
   useEffect(() => {
     if (selectedStockFromParent) {
@@ -348,51 +398,26 @@ export default function TradingPanel({ selectedStockFromParent }: TradingPanelPr
       // If ML analysis is enabled and this is a buy action
       if (type === 'buy' && useMLAnalysis) {
         setIsAnalyzing(true);
+        
         try {
-          const queryParams = new URLSearchParams({
-            symbol: selectedStock.toUpperCase(),
-            days: (analysisDays || 14).toString(),
-            indicator: selectedIndicator === 'none' ? 'none' : selectedIndicator
-          });
-
-          const analysisResponse = await fetch(`http://localhost:5001/api/trading/analyze-stock?${queryParams}`, {
-            method: 'GET',
+          const response = await fetch(`http://localhost:5001/api/trading/analyze-stock?symbol=${selectedStock}&days=${analysisDays}&indicator=${selectedIndicator}`, {
             headers: {
-              'Content-Type': 'application/json',
               'Authorization': `Bearer ${token}`
             }
           });
-
-          const analysisData = await analysisResponse.json();
           
-          if (!analysisResponse.ok) {
-            throw new Error(analysisData.error || 'Failed to analyze stock');
+          if (!response.ok) {
+            throw new Error('Failed to analyze stock');
           }
-
-          // Convert the analysis data to match the expected format
-          const analysis: StockAnalysis = {
-            symbol: selectedStock.toUpperCase(),
-            current_price: currentPrice || 0,
-            predicted_price: analysisData.current_price * (1 + analysisData.expected_growth_pct / 100),
-            total_cost: (currentPrice || 0) * parseFloat(shares),
-            is_good_buy: analysisData.is_good_buy,
-            expected_growth: analysisData.expected_growth_pct,
-            confidence: analysisData.confidence_score / 100,
-            forecast: analysisData.forecast_prices,
-            days: analysisDays || 14
-          };
-
-          if (analysisData.indicator_data) {
-            analysis.indicator = analysisData.indicator_data;
-          }
-
+          
+          const data = await response.json();
+          setAnalysisResult(data);
           setIsAnalyzing(false);
-          setAnalysisResult(analysis);
-          return false; // Stop here and wait for user to confirm in dialog
-        } catch (error: any) {
+          return false; // Stop here and wait for user confirmation
+        } catch (error) {
           setIsAnalyzing(false);
-          setError(error.message || 'Failed to analyze stock. Please try again.');
-          return false;
+          setError('Failed to analyze stock. Proceeding without analysis.');
+          // Continue with purchase without analysis
         }
       }
 
@@ -417,8 +442,15 @@ export default function TradingPanel({ selectedStockFromParent }: TradingPanelPr
         setShares('');
         setAnalysisResult(null);
         setShowAlternatives(false);
+        setOpenSellConfirmation(false);
         await fetchBalance();
         await fetchTransactions();
+        
+        // Update sold stocks list if it's a sell transaction
+        if (type === 'sell') {
+          fetchSoldStocks();
+        }
+        
         return true;
       } else {
         setError(data.error || `Failed to ${type} shares`);
@@ -921,44 +953,552 @@ export default function TradingPanel({ selectedStockFromParent }: TradingPanelPr
     );
   };
 
-  useEffect(() => {
-    const fetchPortfolio = async () => {
-      try {
-        const token = await getToken();
-        if (!token) return;
+  // Add a new function to handle opening the sell dialog
+  const handleOpenSellDialog = () => {
+    setError('');
+    setSuccess('');
+    
+    if (portfolio.length === 0) {
+      setError('You don\'t have any stocks in your portfolio to sell');
+      return;
+    }
+    
+    // Pre-select the first stock in portfolio to improve UX
+    if (portfolio.length > 0) {
+      setSelectedPortfolioStock(portfolio[0]);
+      setSellShares('1'); // Default to 1 share
+    }
+    
+    setOpenSellDialog(true);
+  };
+
+  // Add a function to handle stock selection in the sell dialog
+  const handleSelectStockToSell = (stock: PortfolioPosition | null) => {
+    setSelectedPortfolioStock(stock);
+    setSellShares(''); // Reset shares when stock changes
+  };
+
+  // Add a function to handle proceeding with the sell
+  const handleProceedWithSell = () => {
+    if (!selectedPortfolioStock) {
+      setError('Please select a stock from your portfolio');
+      return;
+    }
+    
+    if (!sellShares || isNaN(parseFloat(sellShares)) || parseFloat(sellShares) <= 0) {
+      setError('Please enter a valid number of shares');
+      return;
+    }
+    
+    if (parseFloat(sellShares) > selectedPortfolioStock.shares) {
+      setError(`You only own ${selectedPortfolioStock.shares} shares of ${selectedPortfolioStock.symbol}`);
+      return;
+    }
+    
+    // Set the selected stock and shares for the main sell function
+    setSelectedStock(selectedPortfolioStock.symbol);
+    setShares(sellShares);
+    
+    // Close the sell dialog and open the confirmation dialog
+    setOpenSellDialog(false);
+    setOpenSellConfirmation(true);
+  };
+
+  // Add a direct sell function that bypasses the complex flow
+  const executeSellTransaction = async (stockSymbol: string, sharesToSell: string) => {
+    try {
+      setError('');
+      setSuccess('');
+      
+      const token = await getToken();
+      if (!token) {
+        setError('Please log in to trade');
+        return false;
+      }
+      
+      console.log(`Directly selling ${sharesToSell} shares of ${stockSymbol}`);
+      
+      // Validate the input
+      if (!stockSymbol || !sharesToSell) {
+        setError('Missing stock symbol or shares');
+        return false;
+      }
+      
+      const sharesNum = parseFloat(sharesToSell);
+      if (isNaN(sharesNum) || sharesNum <= 0) {
+        setError('Please enter a valid number of shares');
+        return false;
+      }
+      
+      // Check if user owns the stock
+      const stockInPortfolio = portfolio.find(
+        (position) => position.symbol.toUpperCase() === stockSymbol.toUpperCase()
+      );
+      
+      if (!stockInPortfolio) {
+        setError(`You don't own any shares of ${stockSymbol}`);
+        return false;
+      }
+      
+      if (stockInPortfolio.shares < sharesNum) {
+        setError(`You only own ${stockInPortfolio.shares} shares of ${stockSymbol}`);
+        return false;
+      }
+      
+      // Make the API call
+      const response = await fetch(`http://localhost:5001/api/trading/sell`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          symbol: stockSymbol,
+          shares: sharesNum
+        })
+      });
+      
+      const data = await response.json();
+      console.log('Sell API response:', data);
+      
+      if (response.ok) {
+        setSuccess(`Successfully sold ${sharesToSell} shares of ${stockSymbol}`);
         
-        const response = await fetch('http://localhost:5001/api/trading/balance', {
-          headers: {
-            'Authorization': `Bearer ${token}`
+        // Close dialogs
+        setOpenSellDialog(false);
+        setOpenSellConfirmation(false);
+        
+        // Reset states
+        setShares('');
+        setSellShares('');
+        setSelectedPortfolioStock(null);
+        
+        // Force immediate refresh
+        await fetchBalance();
+        await fetchTransactions();
+        await fetchSoldStocks();
+        
+        // Force another refresh after a delay to ensure everything is updated
+        setTimeout(() => {
+          setRefreshKey(prev => prev + 1);
+        }, 1000);
+        
+        return true;
+      } else {
+        setError(data.error || 'Failed to sell shares');
+        return false;
+      }
+    } catch (error) {
+      console.error('Error in executeSellTransaction:', error);
+      setError('An error occurred while selling shares');
+      return false;
+    }
+  };
+
+  // Update the SellConfirmationDialog to use the direct sell function
+  const SellConfirmationDialog = () => {
+    const stockSymbol = selectedPortfolioStock ? selectedPortfolioStock.symbol : selectedStock;
+    const stockPrice = selectedPortfolioStock ? selectedPortfolioStock.current_price : currentPrice;
+    const sharesToSell = selectedPortfolioStock ? sellShares : shares;
+    const [isProcessing, setIsProcessing] = useState(false);
+    
+    const handleConfirmSell = async () => {
+      setIsProcessing(true);
+      await executeSellTransaction(stockSymbol, sharesToSell);
+      setIsProcessing(false);
+    };
+    
+    return (
+      <Dialog
+        open={openSellConfirmation}
+        onClose={() => !isProcessing && setOpenSellConfirmation(false)}
+        PaperProps={{
+          sx: {
+            bgcolor: '#1a1a1a',
+            color: 'white',
+            borderRadius: 3,
+            minWidth: '400px',
+            backgroundImage: 'linear-gradient(to bottom, #242424, #1a1a1a)',
+            border: '1px solid rgba(255, 255, 255, 0.1)',
+            boxShadow: '0 8px 32px rgba(0, 0, 0, 0.4)'
           }
-        });
-        
-        if (!response.ok) {
-          throw new Error('Failed to fetch portfolio');
-        }
-        
-        const data = await response.json();
-        setBalance(data.cash_balance || 0);
-        
-        if (Array.isArray(data.portfolio)) {
-          setPortfolio(data.portfolio);
-          const portfolioValue = data.portfolio.reduce((sum: number, position: PortfolioPosition) => {
-            return sum + position.position_value;
-          }, 0);
-          setTotalValue(data.cash_balance + portfolioValue);
-        } else {
-          setPortfolio([]);
-          setTotalValue(data.cash_balance);
-        }
-      } catch (error) {
-        console.error('Error fetching portfolio:', error);
+        }}
+      >
+        <DialogTitle sx={{ 
+          borderBottom: '1px solid rgba(255, 255, 255, 0.1)', 
+          display: 'flex', 
+          justifyContent: 'center', 
+          alignItems: 'center',
+          flexDirection: 'column',
+          background: 'linear-gradient(45deg, #2c2c2c, #242424)',
+          py: 2.5
+        }}>
+          <Box sx={{ 
+            width: 60, 
+            height: 60, 
+            bgcolor: '#1a1a1a', 
+            borderRadius: '50%', 
+            display: 'flex', 
+            alignItems: 'center', 
+            justifyContent: 'center',
+            mb: 2,
+            border: '2px solid #ff5252'
+          }}>
+            <Typography 
+              variant="h5" 
+              sx={{ 
+                fontWeight: 'bold', 
+                color: '#ff5252',
+                fontFamily: 'monospace'
+              }}
+            >
+              $
+            </Typography>
+          </Box>
+          <Typography variant="h6" sx={{ fontWeight: '500', color: '#fff', textAlign: 'center' }}>
+            Confirm Sale
+          </Typography>
+        </DialogTitle>
+        <DialogContent sx={{ py: 3 }}>
+          <Typography variant="body1" sx={{ color: '#e0e0e0', textAlign: 'center', mb: 2 }}>
+            Are you sure you want to sell {sharesToSell} shares of {stockSymbol.toUpperCase()}?
+          </Typography>
+          <Box sx={{ 
+            bgcolor: 'rgba(255, 82, 82, 0.1)', 
+            p: 2, 
+            borderRadius: 2,
+            border: '1px solid rgba(255, 82, 82, 0.2)',
+            mb: 2
+          }}>
+            <Typography variant="body2" sx={{ color: '#ff5252' }}>
+              This action cannot be undone. The funds will be added to your balance immediately.
+            </Typography>
+          </Box>
+          <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
+            <Typography variant="body2" sx={{ color: '#9e9e9e' }}>
+              Shares:
+            </Typography>
+            <Typography variant="body2" sx={{ color: '#e0e0e0', fontWeight: 'medium' }}>
+              {sharesToSell}
+            </Typography>
+          </Box>
+          <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
+            <Typography variant="body2" sx={{ color: '#9e9e9e' }}>
+              Price per share:
+            </Typography>
+            <Typography variant="body2" sx={{ color: '#e0e0e0', fontWeight: 'medium' }}>
+              ${stockPrice?.toFixed(2) || '0.00'}
+            </Typography>
+          </Box>
+          <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
+            <Typography variant="body2" sx={{ color: '#9e9e9e' }}>
+              Total value:
+            </Typography>
+            <Typography variant="body2" sx={{ color: '#69f0ae', fontWeight: 'bold' }}>
+              ${((stockPrice || 0) * parseFloat(sharesToSell || '0')).toFixed(2)}
+            </Typography>
+          </Box>
+        </DialogContent>
+        <DialogActions sx={{ px: 3, pb: 3, display: 'flex', justifyContent: 'center', gap: 2 }}>
+          <Button 
+            onClick={() => setOpenSellConfirmation(false)}
+            variant="outlined"
+            disabled={isProcessing}
+            sx={{ 
+              color: '#e0e0e0',
+              borderColor: '#e0e0e0',
+              '&:hover': { 
+                borderColor: '#fff',
+                bgcolor: 'rgba(255, 255, 255, 0.05)'
+              },
+              px: 3
+            }}
+          >
+            No, Cancel
+          </Button>
+          <Button 
+            onClick={handleConfirmSell}
+            variant="contained"
+            disabled={isProcessing}
+            startIcon={isProcessing ? <CircularProgress size={20} color="inherit" /> : null}
+            sx={{
+              bgcolor: '#ff5252',
+              color: '#fff',
+              '&:hover': { bgcolor: '#d32f2f' },
+              px: 3,
+              fontWeight: 'medium'
+            }}
+          >
+            {isProcessing ? 'Processing...' : 'Yes, Sell Now'}
+          </Button>
+        </DialogActions>
+      </Dialog>
+    );
+  };
+
+  // Update the SellStockDialog to use the direct approach
+  const SellStockDialog = () => {
+    // Local state to prevent flickering
+    const [localError, setLocalError] = useState('');
+    const [isProcessing, setIsProcessing] = useState(false);
+    
+    const handleLocalProceed = () => {
+      setLocalError('');
+      
+      if (!selectedPortfolioStock) {
+        setLocalError('Please select a stock from your portfolio');
+        return;
+      }
+      
+      if (!sellShares || isNaN(parseFloat(sellShares)) || parseFloat(sellShares) <= 0) {
+        setLocalError('Please enter a valid number of shares');
+        return;
+      }
+      
+      if (parseFloat(sellShares) > selectedPortfolioStock.shares) {
+        setLocalError(`You only own ${selectedPortfolioStock.shares} shares of ${selectedPortfolioStock.symbol}`);
+        return;
+      }
+      
+      // Close the sell dialog and open the confirmation dialog
+      setOpenSellDialog(false);
+      setOpenSellConfirmation(true);
+    };
+    
+    // Add a direct sell option
+    const handleDirectSell = async () => {
+      setLocalError('');
+      setIsProcessing(true);
+      
+      if (!selectedPortfolioStock) {
+        setLocalError('Please select a stock from your portfolio');
+        setIsProcessing(false);
+        return;
+      }
+      
+      if (!sellShares || isNaN(parseFloat(sellShares)) || parseFloat(sellShares) <= 0) {
+        setLocalError('Please enter a valid number of shares');
+        setIsProcessing(false);
+        return;
+      }
+      
+      if (parseFloat(sellShares) > selectedPortfolioStock.shares) {
+        setLocalError(`You only own ${selectedPortfolioStock.shares} shares of ${selectedPortfolioStock.symbol}`);
+        setIsProcessing(false);
+        return;
+      }
+      
+      // Execute sell directly
+      const success = await executeSellTransaction(selectedPortfolioStock.symbol, sellShares);
+      setIsProcessing(false);
+      
+      if (!success) {
+        setOpenSellDialog(false); // Close dialog even on error to show the error message
       }
     };
     
-    fetchPortfolio();
-    const intervalId = setInterval(fetchPortfolio, 15000);
-    return () => clearInterval(intervalId);
-  }, []);
+    return (
+      <Dialog
+        open={openSellDialog}
+        onClose={() => !isProcessing && setOpenSellDialog(false)}
+        PaperProps={{
+          sx: {
+            bgcolor: '#1a1a1a',
+            color: 'white',
+            borderRadius: 3,
+            minWidth: '400px',
+            backgroundImage: 'linear-gradient(to bottom, #242424, #1a1a1a)',
+            border: '1px solid rgba(255, 255, 255, 0.1)',
+            boxShadow: '0 8px 32px rgba(0, 0, 0, 0.4)'
+          }
+        }}
+      >
+        <DialogTitle sx={{ 
+          borderBottom: '1px solid rgba(255, 255, 255, 0.1)', 
+          background: 'linear-gradient(45deg, #2c2c2c, #242424)',
+          py: 2
+        }}>
+          <Typography variant="h6" sx={{ fontWeight: '500', color: '#fff' }}>
+            Sell Stock from Your Portfolio
+          </Typography>
+        </DialogTitle>
+        <DialogContent sx={{ py: 3 }}>
+          {localError && (
+            <Alert 
+              severity="error" 
+              sx={{ 
+                mb: 2, 
+                bgcolor: 'rgba(211, 47, 47, 0.1)', 
+                color: '#ff5252',
+              '& .MuiAlert-icon': { color: '#ff5252' }
+            }}
+          >
+            {localError}
+          </Alert>
+        )}
+          
+          <FormControl fullWidth variant="outlined" sx={{ mb: 3, mt: 1 }}>
+            <InputLabel id="portfolio-stock-label" sx={{ color: '#9e9e9e' }}>Select Stock</InputLabel>
+            <Select
+              labelId="portfolio-stock-label"
+              value={selectedPortfolioStock ? selectedPortfolioStock.symbol : ''}
+              onChange={(e) => {
+                const selectedSymbol = e.target.value;
+                const stock = portfolio.find(item => item.symbol === selectedSymbol);
+                handleSelectStockToSell(stock || null);
+              }}
+              disabled={isProcessing}
+              label="Select Stock"
+              sx={{
+                '& .MuiOutlinedInput-notchedOutline': {
+                  borderColor: 'rgba(255, 255, 255, 0.2)',
+                },
+                '&:hover .MuiOutlinedInput-notchedOutline': {
+                  borderColor: 'rgba(255, 255, 255, 0.3)',
+                },
+                '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
+                  borderColor: '#ff5252',
+                },
+                color: '#e0e0e0',
+              }}
+              MenuProps={{
+                PaperProps: {
+                  sx: {
+                    bgcolor: '#242424',
+                    color: '#e0e0e0',
+                    '& .MuiMenuItem-root:hover': {
+                      bgcolor: 'rgba(255, 82, 82, 0.1)',
+                    },
+                    '& .MuiMenuItem-root.Mui-selected': {
+                      bgcolor: 'rgba(255, 82, 82, 0.2)',
+                    },
+                    '& .MuiMenuItem-root.Mui-selected:hover': {
+                      bgcolor: 'rgba(255, 82, 82, 0.3)',
+                    },
+                  }
+                }
+              }}
+            >
+              {portfolio.map((stock) => (
+                <MenuItem key={stock.symbol} value={stock.symbol}>
+                  <Box sx={{ display: 'flex', justifyContent: 'space-between', width: '100%', alignItems: 'center' }}>
+                    <Typography>{stock.symbol}</Typography>
+                    <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end' }}>
+                      <Typography variant="body2" sx={{ color: '#69f0ae' }}>{stock.shares} shares</Typography>
+                      <Typography variant="caption" sx={{ color: '#9e9e9e' }}>${stock.current_price.toFixed(2)} per share</Typography>
+                    </Box>
+                  </Box>
+                </MenuItem>
+              ))}
+            </Select>
+          </FormControl>
+          
+          {selectedPortfolioStock && (
+            <>
+              <Box sx={{ mb: 3 }}>
+                <Typography variant="body2" sx={{ color: '#9e9e9e', mb: 1 }}>
+                  You own {selectedPortfolioStock.shares} shares of {selectedPortfolioStock.symbol}
+                </Typography>
+                <Typography variant="body2" sx={{ color: '#9e9e9e', mb: 2 }}>
+                  Current value: ${selectedPortfolioStock.position_value.toFixed(2)}
+                </Typography>
+                
+                <TextField
+                  fullWidth
+                  label="Number of Shares to Sell"
+                  variant="outlined"
+                  type="number"
+                  value={sellShares}
+                  onChange={(e) => setSellShares(e.target.value)}
+                  disabled={isProcessing}
+                  InputProps={{
+                    inputProps: { 
+                      min: 1, 
+                      max: selectedPortfolioStock.shares,
+                      step: 1
+                    }
+                  }}
+                  sx={{
+                    '& .MuiOutlinedInput-root': {
+                      '& fieldset': {
+                        borderColor: 'rgba(255, 255, 255, 0.2)',
+                      },
+                      '&:hover fieldset': {
+                        borderColor: 'rgba(255, 255, 255, 0.3)',
+                      },
+                      '&.Mui-focused fieldset': {
+                        borderColor: '#ff5252',
+                      },
+                    },
+                    '& .MuiInputLabel-root': {
+                      color: '#9e9e9e',
+                    },
+                    '& .MuiInputBase-input': {
+                      color: '#e0e0e0',
+                    },
+                  }}
+                />
+              </Box>
+              
+              <Box sx={{ 
+                bgcolor: 'rgba(255, 255, 255, 0.05)', 
+                p: 2, 
+                borderRadius: 2,
+                border: '1px solid rgba(255, 255, 255, 0.1)',
+                mb: 2
+              }}>
+                <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
+                  <Typography variant="body2" sx={{ color: '#9e9e9e' }}>
+                    Price per share:
+                  </Typography>
+                  <Typography variant="body2" sx={{ color: '#e0e0e0' }}>
+                    ${selectedPortfolioStock.current_price.toFixed(2)}
+                  </Typography>
+                </Box>
+                <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
+                  <Typography variant="body2" sx={{ color: '#9e9e9e' }}>
+                    Total sale value:
+                  </Typography>
+                  <Typography variant="body2" sx={{ color: '#69f0ae', fontWeight: 'bold' }}>
+                    ${(selectedPortfolioStock.current_price * parseFloat(sellShares || '0')).toFixed(2)}
+                  </Typography>
+                </Box>
+              </Box>
+            </>
+          )}
+        </DialogContent>
+        <DialogActions sx={{ px: 3, pb: 3 }}>
+          <Button 
+            onClick={() => setOpenSellDialog(false)}
+            disabled={isProcessing}
+            sx={{ 
+              color: '#9e9e9e',
+              '&:hover': { color: '#e0e0e0' }
+            }}
+          >
+            Cancel
+          </Button>
+          <Button 
+            onClick={handleDirectSell}
+            variant="contained"
+            disabled={isProcessing || !selectedPortfolioStock || !sellShares || parseFloat(sellShares) <= 0 || parseFloat(sellShares) > (selectedPortfolioStock?.shares || 0)}
+            startIcon={isProcessing ? <CircularProgress size={20} color="inherit" /> : null}
+            sx={{
+              bgcolor: '#ff5252',
+              color: '#fff',
+              '&:hover': { bgcolor: '#d32f2f' },
+              '&.Mui-disabled': {
+                bgcolor: 'rgba(255, 82, 82, 0.3)',
+                color: 'rgba(255, 255, 255, 0.5)'
+              }
+            }}
+          >
+            {isProcessing ? 'Processing...' : 'Sell Now'}
+          </Button>
+        </DialogActions>
+      </Dialog>
+    );
+  };
 
   return (
     <Box sx={{ 
@@ -1350,18 +1890,24 @@ export default function TradingPanel({ selectedStockFromParent }: TradingPanelPr
               </>
             )}
             
-            <Box sx={{ display: 'flex', gap: 2 }}>
+            <Box sx={{ 
+              display: 'grid', 
+              gridTemplateColumns: '1fr 1fr', 
+              gap: 2,
+              mt: 2
+            }}>
               <Button 
                 variant="contained" 
-                color="primary" 
                 onClick={() => handleTrade('buy')}
                 disabled={isAnalyzing}
                 startIcon={isAnalyzing ? <CircularProgress size={20} /> : null}
                 sx={{ 
-                  flexGrow: 1,
                   bgcolor: '#69f0ae',
                   color: '#1a1a1a',
                   fontWeight: 'bold',
+                  height: '48px',
+                  fontSize: '16px',
+                  borderRadius: '8px',
                   '&:hover': {
                     bgcolor: '#4caf50',
                   },
@@ -1371,25 +1917,26 @@ export default function TradingPanel({ selectedStockFromParent }: TradingPanelPr
                   }
                 }}
               >
-                {isAnalyzing ? 'Analyzing...' : 'Buy'}
+                {isAnalyzing ? 'Analyzing...' : 'BUY'}
               </Button>
               
-              <Button 
-                variant="outlined" 
-                color="error" 
-                onClick={() => handleTrade('sell')}
-                sx={{ 
-                  flexGrow: 1,
-                  borderColor: theme.palette.error.main,
-                  color: theme.palette.error.main,
+              <Button
+                variant="outlined"
+                onClick={handleOpenSellDialog}
+                sx={{
+                  color: '#ff5252',
+                  borderColor: '#ff5252',
+                  height: '48px',
+                  fontSize: '16px',
                   fontWeight: 'bold',
+                  borderRadius: '8px',
                   '&:hover': {
-                    borderColor: theme.palette.error.dark,
-                    bgcolor: 'rgba(211, 47, 47, 0.04)',
+                    backgroundColor: 'rgba(255, 82, 82, 0.08)',
+                    borderColor: '#ff5252'
                   }
                 }}
               >
-                Sell
+                SELL
               </Button>
             </Box>
           </CardContent>
@@ -1493,6 +2040,52 @@ export default function TradingPanel({ selectedStockFromParent }: TradingPanelPr
         </CardContent>
       </Card>
 
+      <Card sx={{ 
+        mt: 4, 
+        bgcolor: '#242424',
+        borderRadius: 2,
+        border: '1px solid',
+        borderColor: 'rgba(255, 255, 255, 0.1)',
+        boxShadow: '0 4px 6px rgba(0, 0, 0, 0.1)'
+      }}>
+        <CardContent>
+          <Typography variant="h6" gutterBottom sx={{ color: '#ff5252', fontWeight: 'medium', mb: 3, display: 'flex', alignItems: 'center', gap: 1 }}>
+            <TrendingDownIcon />
+            Sold Stocks History
+          </Typography>
+          <TableContainer component={Paper} sx={{ bgcolor: '#1a1a1a', borderRadius: 2 }}>
+            <Table>
+              <TableHead>
+                <TableRow>
+                  <TableCell sx={{ color: '#9e9e9e', fontWeight: 500, borderBottom: '1px solid rgba(255, 255, 255, 0.1)' }}>Date</TableCell>
+                  <TableCell sx={{ color: '#9e9e9e', fontWeight: 500, borderBottom: '1px solid rgba(255, 255, 255, 0.1)' }}>Symbol</TableCell>
+                  <TableCell align="right" sx={{ color: '#9e9e9e', fontWeight: 500, borderBottom: '1px solid rgba(255, 255, 255, 0.1)' }}>Shares</TableCell>
+                  <TableCell align="right" sx={{ color: '#9e9e9e', fontWeight: 500, borderBottom: '1px solid rgba(255, 255, 255, 0.1)' }}>Price</TableCell>
+                  <TableCell align="right" sx={{ color: '#9e9e9e', fontWeight: 500, borderBottom: '1px solid rgba(255, 255, 255, 0.1)' }}>Total</TableCell>
+                </TableRow>
+              </TableHead>
+              <TableBody>
+                {Array.isArray(soldStocks) && soldStocks.length > 0 ? (
+                  soldStocks.map((transaction) => (
+                    <TableRow key={transaction.id}>
+                      <TableCell sx={{ color: '#e0e0e0', borderBottom: '1px solid rgba(255, 255, 255, 0.05)' }}>{new Date(transaction.created_at).toLocaleDateString()}</TableCell>
+                      <TableCell sx={{ color: '#e0e0e0', borderBottom: '1px solid rgba(255, 255, 255, 0.05)' }}>{transaction.symbol}</TableCell>
+                      <TableCell align="right" sx={{ color: '#e0e0e0', borderBottom: '1px solid rgba(255, 255, 255, 0.05)' }}>{transaction.shares}</TableCell>
+                      <TableCell align="right" sx={{ color: '#e0e0e0', borderBottom: '1px solid rgba(255, 255, 255, 0.05)' }}>${transaction.price.toFixed(2)}</TableCell>
+                      <TableCell align="right" sx={{ color: '#ff5252', borderBottom: '1px solid rgba(255, 255, 255, 0.05)' }}>${transaction.total.toFixed(2)}</TableCell>
+                    </TableRow>
+                  ))
+                ) : (
+                  <TableRow>
+                    <TableCell colSpan={5} align="center" sx={{ color: '#9e9e9e', py: 4 }}>No sold stocks history</TableCell>
+                  </TableRow>
+                )}
+              </TableBody>
+            </Table>
+          </TableContainer>
+        </CardContent>
+      </Card>
+
       <Dialog 
         open={openAddFunds} 
         onClose={() => setOpenAddFunds(false)}
@@ -1557,6 +2150,12 @@ export default function TradingPanel({ selectedStockFromParent }: TradingPanelPr
           </Button>
         </DialogActions>
       </Dialog>
+
+      {/* Add the SellStockDialog component */}
+      <SellStockDialog />
+
+      {/* Add the SellConfirmationDialog component */}
+      <SellConfirmationDialog />
     </Box>
   );
 } 

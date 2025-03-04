@@ -411,7 +411,30 @@ export default function TradingPanel({ selectedStockFromParent }: TradingPanelPr
           }
           
           const data = await response.json();
-          setAnalysisResult(data);
+          // Map the backend response to the expected StockAnalysis interface
+          const mappedData: StockAnalysis = {
+            symbol: selectedStock,
+            current_price: data.current_price,
+            predicted_price: data.forecast_prices ? data.forecast_prices[data.forecast_prices.length - 1] : undefined,
+            total_cost: data.current_price * parseFloat(shares),
+            is_good_buy: data.is_good_buy,
+            expected_growth: data.expected_growth_pct,
+            confidence: data.confidence_score,
+            forecast: data.forecast_prices || [],
+            days: analysisDays,
+            indicator: data.indicator_data ? {
+              type: selectedIndicator,
+              values: data.indicator_data.values || [],
+              recommendation: data.indicator_data.recommendation || '',
+              description: data.indicator_data.description || '',
+              middle_band: data.indicator_data.middle_band,
+              upper_band: data.indicator_data.upper_band,
+              lower_band: data.indicator_data.lower_band,
+              percent_b: data.indicator_data.percent_b,
+              atr_percentage: data.indicator_data.atr_percentage
+            } : undefined
+          };
+          setAnalysisResult(mappedData);
           setIsAnalyzing(false);
           return false; // Stop here and wait for user confirmation
         } catch (error) {

@@ -635,49 +635,96 @@ def buy(current_user):
 @app.route('/api/trading/sell', methods=['POST'])
 @token_required
 def sell_stock(current_user):
-    data = request.get_json()
-    symbol = data.get('symbol')
-    shares = data.get('shares')
-
-    if not all([symbol, shares]) or shares <= 0:
-        return jsonify({'error': 'Invalid request parameters'}), 400
-
     try:
-        # Check if user owns enough shares
+        data = request.get_json()
+        logger.info(f"Sell request received: {data}")
+
+        symbol = data.get('symbol')
+        shares = data.get('shares')
+
+        # Validate input parameters
+        if symbol is None or shares is None:
+            logger.error("Missing symbol or shares in sell request")
+            return jsonify({'error': 'Missing symbol or shares'}), 400
+
+        # Ensure symbol is a string and shares is a number
         try:
-            portfolio_ref = db.collection('portfolios')
-            position_query = portfolio_ref.where(
-                'user_id', '==', current_user.uid).where('symbol', '==', symbol)
-            position_docs = list(position_query.stream())
+            symbol = str(symbol).upper()
+            shares = float(shares)
+        except (ValueError, TypeError) as e:
+            logger.error(f"Invalid data types in sell request: {str(e)}")
+            return jsonify({'error': 'Invalid data types'}), 400
 
-            if not position_docs or position_docs[0].to_dict()['shares'] < shares:
-                return jsonify({'error': 'Insufficient shares'}), 400
+        if shares <= 0:
+            logger.error(f"Invalid shares quantity: {shares}")
+            return jsonify({'error': 'Shares must be greater than 0'}), 400
 
-            position_doc = position_docs[0]
-            position_data = position_doc.to_dict()
-            current_shares = position_data['shares']
+        # Check if user owns enough shares
+        portfolio_ref = db.collection('portfolios')
+        position_query = portfolio_ref.where(
+            'user_id', '==', current_user.uid).where('symbol', '==', symbol)
+        position_docs = list(position_query.stream())
 
-            # Get current stock price
+        logger.info(
+            f"Found {len(position_docs)} matching positions for user {current_user.uid}, symbol {symbol}")
+
+        if not position_docs:
+            logger.error(
+                f"User {current_user.uid} does not own any shares of {symbol}")
+            return jsonify({'error': f'You do not own any shares of {symbol}'}), 400
+
+        position_doc = position_docs[0]
+        position_data = position_doc.to_dict()
+        current_shares = position_data.get('shares', 0)
+
+        logger.info(
+            f"User owns {current_shares} shares of {symbol}, attempting to sell {shares}")
+
+        if current_shares < shares:
+            logger.error(
+                f"Insufficient shares: user has {current_shares}, trying to sell {shares}")
+            return jsonify({'error': f'You only own {current_shares} shares of {symbol}'}), 400
+
+        # Get current stock price
+        try:
             quote = finnhub_client.quote(symbol)
             price = quote['c']
-            total_value = price * shares
+            if price <= 0:
+                logger.error(f"Invalid stock price: {price}")
+                return jsonify({'error': 'Could not get a valid stock price'}), 400
 
-            # Update portfolio
+            total_value = price * shares
+            logger.info(
+                f"Stock {symbol} current price: ${price}, total sale value: ${total_value}")
+        except Exception as e:
+            logger.error(f"Error getting stock price: {str(e)}")
+            return jsonify({'error': 'Failed to get current stock price'}), 400
+
+        # Update portfolio
+        try:
             if current_shares == shares:
+                # Delete the position if selling all shares
+                logger.info(
+                    f"Selling all shares, deleting position {position_doc.id}")
                 portfolio_ref.document(position_doc.id).delete()
             else:
+                # Update the position with reduced shares
+                new_shares = current_shares - shares
+                logger.info(
+                    f"Updating position {position_doc.id}, new shares: {new_shares}")
                 portfolio_ref.document(position_doc.id).update({
-                    'shares': current_shares - shares,
+                    'shares': new_shares,
+                    'position_value': new_shares * price,
                     'last_price': price,
                     'updated_at': datetime.utcnow()
                 })
         except Exception as e:
-            logger.error(f"Error updating portfolio for sell: {str(e)}")
+            logger.error(f"Error updating portfolio: {str(e)}")
             return jsonify({'error': 'Failed to update portfolio'}), 400
 
         # Create transaction record
         try:
-            db.collection('transactions').add({
+            transaction_ref = db.collection('transactions').add({
                 'user_id': current_user.uid,
                 'symbol': symbol,
                 'shares': shares,
@@ -686,29 +733,46 @@ def sell_stock(current_user):
                 'type': 'sell',
                 'created_at': datetime.utcnow()
             })
+            logger.info(f"Created transaction record: {transaction_ref.id}")
         except Exception as e:
-            logger.error(f"Error recording transaction for sell: {str(e)}")
+            logger.error(f"Error recording transaction: {str(e)}")
             # Continue with balance update even if transaction recording fails
 
         # Update user balance
         try:
             user_ref = db.collection('users').document(current_user.uid)
             user_doc = user_ref.get()
-            current_balance = user_doc.to_dict().get('balance', 0.0)
+            if not user_doc.exists:
+                logger.error(f"User document not found: {current_user.uid}")
+                return jsonify({'error': 'User not found'}), 404
+
+            user_data = user_doc.to_dict()
+            current_balance = user_data.get('balance', 0.0)
             new_balance = current_balance + total_value
+
+            logger.info(
+                f"Updating user balance from ${current_balance} to ${new_balance}")
             user_ref.update({'balance': new_balance})
         except Exception as e:
-            logger.error(f"Error updating balance for sell: {str(e)}")
+            logger.error(f"Error updating balance: {str(e)}")
             return jsonify({'error': 'Failed to update balance'}), 400
 
+        # Return success response
         return jsonify({
+            'success': True,
             'message': 'Stock sold successfully',
+            'sold': {
+                'symbol': symbol,
+                'shares': shares,
+                'price': price,
+                'total_value': total_value
+            },
             'new_balance': new_balance
         })
 
     except Exception as e:
-        logger.error(f"Error processing sell order: {str(e)}")
-        return jsonify({'error': 'Failed to process sale'}), 400
+        logger.error(f"Unhandled error in sell_stock: {str(e)}")
+        return jsonify({'error': f'Failed to process sale: {str(e)}'}), 500
 
 
 @app.route('/api/trading/transactions', methods=['GET'])

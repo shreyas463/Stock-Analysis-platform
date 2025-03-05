@@ -8,7 +8,7 @@ import NewsSection from '../components/NewsSection';
 import TradingPanel from '../components/TradingPanel';
 import TopGainers from '../components/TopGainers';
 import Discussion from '@/components/Discussion';
-import StockerrLogo from '@/components/StockerrLogo';
+import StockAnalysisLogo from '@/components/StockAnalysisLogo';
 import PortfolioPieChart from '@/components/PortfolioPieChart';
 import { useAuth } from '@/contexts/AuthContext';
 import { useRouter } from 'next/navigation';

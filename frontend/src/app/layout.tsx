@@ -6,7 +6,7 @@ import ClientLayout from '@/components/ClientLayout';
 const inter = Inter({ subsets: ['latin'] });
 
 export const metadata: Metadata = {
-  title: 'Stockerr',
+  title: 'Stock Analysis Platform',
   description: 'Your Modern Trading Platform',
 };
 

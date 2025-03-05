@@ -1,4 +1,4 @@
-# Stockerr
+# Stock Analysis platform
 
 A full-stack web application that replicates core features of Robinhood, built with Next.js and Flask.
 

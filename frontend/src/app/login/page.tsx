@@ -21,7 +21,7 @@ import {
 } from '@mui/material';
 import { Visibility, VisibilityOff } from '@mui/icons-material';
 import AnimatedCandlestickBackground from '@/components/AnimatedCandlestickBackground';
-import StockerrLogo from '@/components/StockerrLogo';
+import StockAnalysisLogo from '@/components/StockAnalysisLogo';
 import CryptoPriceWidget from '@/components/CryptoPriceWidget';
 import LoginCharacter from '@/components/LoginCharacter';
 
@@ -252,7 +252,7 @@ export default function LoginPage() {
               },
             }}
           >
-            <StockerrLogo size={90} />
+            <StockAnalysisLogo size={90} />
             
             <Typography 
               component="h1" 

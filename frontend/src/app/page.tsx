@@ -10,6 +10,7 @@ import TopGainers from '../components/TopGainers';
 import Discussion from '@/components/Discussion';
 import StockAnalysisLogo from '@/components/StockAnalysisLogo';
 import PortfolioPieChart from '@/components/PortfolioPieChart';
+import SentimentAnalysis from '@/components/SentimentAnalysis';
 import { useAuth } from '@/contexts/AuthContext';
 import { useRouter } from 'next/navigation';
 import { auth } from '@/firebase/config';
@@ -40,6 +41,9 @@ export default function Home() {
   const [stocksValue, setStocksValue] = useState<number>(0);
   const [portfolio, setPortfolio] = useState<any[]>([]);
   const [refreshKey, setRefreshKey] = useState(0);
+
+  // Add a new state variable for detecting mobile view
+  const [isMobile, setIsMobile] = useState(false);
 
   // Function to reset to homepage view
   const resetToHomepage = () => {
@@ -140,6 +144,22 @@ export default function Home() {
       router.push('/login');
     }
   }, [isAuthenticated, router]);
+
+  // Add a useEffect to detect mobile screen size
+  useEffect(() => {
+    const handleResize = () => {
+      setIsMobile(window.innerWidth < 768);
+    };
+    
+    // Set initial value
+    handleResize();
+    
+    // Add event listener
+    window.addEventListener('resize', handleResize);
+    
+    // Cleanup
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
 
   if (isLoading) {
     return (
@@ -260,11 +280,103 @@ export default function Home() {
     </Card>
   );
 
+  // At the end of the component, before the return statement
+  // Add mobile bottom navigation
+  const MobileNavigation = () => {
+    if (!isMobile) return null;
+    
+    return (
+      <Box
+        sx={{
+          position: 'fixed',
+          bottom: 0,
+          left: 0,
+          right: 0,
+          bgcolor: '#1A1A1A',
+          borderTop: '1px solid #333',
+          display: 'flex',
+          justifyContent: 'space-around',
+          py: 1,
+          zIndex: 1000,
+        }}
+      >
+        <IconButton 
+          onClick={() => {
+            setActiveTab('market');
+            resetToHomepage();
+          }}
+          sx={{ 
+            color: activeTab === 'market' ? '#4caf50' : '#aaa',
+            display: 'flex',
+            flexDirection: 'column',
+            fontSize: '0.6rem'
+          }}
+        >
+          <HomeIcon />
+          <Typography variant="caption">Home</Typography>
+        </IconButton>
+        
+        <IconButton 
+          onClick={() => focusOnSearch()}
+          sx={{ 
+            color: '#aaa',
+            display: 'flex',
+            flexDirection: 'column',
+            fontSize: '0.6rem'
+          }}
+        >
+          <SearchIcon />
+          <Typography variant="caption">Search</Typography>
+        </IconButton>
+        
+        <IconButton 
+          onClick={() => setActiveTab('discussion')}
+          sx={{ 
+            color: activeTab === 'discussion' ? '#4caf50' : '#aaa',
+            display: 'flex',
+            flexDirection: 'column',
+            fontSize: '0.6rem'
+          }}
+        >
+          <ForumIcon />
+          <Typography variant="caption">Discuss</Typography>
+        </IconButton>
+        
+        <IconButton 
+          onClick={() => setActiveTab('profile')}
+          sx={{ 
+            color: activeTab === 'profile' ? '#4caf50' : '#aaa',
+            display: 'flex',
+            flexDirection: 'column',
+            fontSize: '0.6rem'
+          }}
+        >
+          <PersonIcon />
+          <Typography variant="caption">Profile</Typography>
+        </IconButton>
+      </Box>
+    );
+  };
+
+  // Add the missing functions
+  const handleSearch = (query: string) => {
+    if (query) {
+      setSelectedStock(query);
+      fetchStockData(query);
+    }
+  };
+
+  const handleStockSelect = (symbol: string) => {
+    setSelectedStock(symbol);
+    fetchStockData(symbol);
+  };
+
   return (
     <Box sx={{ 
-      minHeight: '100vh',
+      minHeight: '100vh', 
       bgcolor: '#1a1e2e',
-      p: 3
+      p: 3,
+      pb: isMobile ? 7 : 3 // Add padding at the bottom for mobile navigation
     }}>
       <Box sx={{ mb: 4 }}>
         <Typography 
@@ -375,6 +487,15 @@ export default function Home() {
                   </CardContent>
                 </Card>
                 
+                <Card sx={{ bgcolor: '#1E1E1E', borderRadius: 2, mb: 3 }}>
+                  <CardContent>
+                    <Typography variant="h6" sx={{ color: '#fff', mb: 2 }}>
+                      Market Sentiment
+                    </Typography>
+                    <SentimentAnalysis symbol={selectedStock} />
+                  </CardContent>
+                </Card>
+                
                 <Card sx={{ bgcolor: '#1E1E1E', borderRadius: 2 }}>
                   <CardContent>
                     <Typography variant="h6" sx={{ color: '#fff', mb: 2 }}>
@@ -386,12 +507,75 @@ export default function Home() {
               </Grid>
               
               <Grid item xs={12} lg={4}>
-                <Card sx={{ bgcolor: '#1E1E1E', mb: 3, borderRadius: 2 }}>
+                <Card sx={{ 
+                  bgcolor: '#1E1E1E', 
+                  mb: 3, 
+                  borderRadius: 2,
+                  maxHeight: isMobile ? 'calc(100vh - 200px)' : 'auto',
+                  overflow: isMobile ? 'auto' : 'visible'
+                }}>
                   <CardContent>
                     <Typography variant="h6" sx={{ color: '#fff', mb: 2 }}>
                       Trade Stocks
                     </Typography>
                     <TradingPanel selectedStockFromParent={selectedStock} />
+                  </CardContent>
+                </Card>
+              </Grid>
+            </Grid>
+          ) : (
+            // Before stock search - Different layout with mobile optimizations
+            <Grid container spacing={3}>
+              <Grid item xs={12} md={7}>
+                <Card sx={{ 
+                  bgcolor: '#1E1E1E', 
+                  borderRadius: 2,
+                  border: '1px solid #333'
+                }}>
+                  <CardContent>
+                    <Box sx={{ 
+                      display: 'flex', 
+                      alignItems: 'center', 
+                      mb: 3,
+                      pb: 2,
+                      borderBottom: '1px solid #333'
+                    }}>
+                      <AccountBalanceWalletIcon sx={{ color: '#4caf50', mr: 1, fontSize: 28 }} />
+                      <Typography variant="h6" sx={{ color: '#fff' }}>
+                        Trade Stocks
+                      </Typography>
+                    </Box>
+                    
+                    <Box sx={{ mb: 3 }}>
+                      <SearchBar onSearch={handleSearch} inputRef={searchInputRef} />
+                    </Box>
+                    
+                    <TradingPanel selectedStockFromParent={selectedStock} />
+                  </CardContent>
+                </Card>
+              </Grid>
+              
+              <Grid item xs={12} md={5}>
+                <Card sx={{ 
+                  bgcolor: '#1E1E1E', 
+                  borderRadius: 2,
+                  border: '1px solid #333',
+                  mb: 3
+                }}>
+                  <CardContent>
+                    <Box sx={{ 
+                      display: 'flex', 
+                      alignItems: 'center', 
+                      mb: 3,
+                      pb: 2,
+                      borderBottom: '1px solid #333'
+                    }}>
+                      <ShowChartIcon sx={{ color: '#4caf50', mr: 1, fontSize: 28 }} />
+                      <Typography variant="h6" sx={{ color: '#fff' }}>
+                        Market Overview
+                      </Typography>
+                    </Box>
+                    <TopGainers maxItems={5} onSelectStock={handleStockSelect} />
                   </CardContent>
                 </Card>
 
@@ -412,7 +596,9 @@ export default function Home() {
                   bgcolor: '#1E1E1E', 
                   borderRadius: 2,
                   border: '1px solid #333',
-                  mt: 3
+                  mt: 3,
+                  maxHeight: isMobile ? '300px' : '400px',
+                  overflow: 'auto'
                 }}>
                   <CardContent>
                     <Typography variant="h6" sx={{ color: '#fff', mb: 2 }}>
@@ -423,14 +609,14 @@ export default function Home() {
                       <Box>
                         <Box sx={{ 
                           display: 'grid', 
-                          gridTemplateColumns: '1fr 1fr 1fr 1fr', 
+                          gridTemplateColumns: isMobile ? '2fr 1fr 1fr' : '1fr 1fr 1fr 1fr', 
                           borderBottom: '1px solid #333',
                           pb: 1,
                           mb: 1
                         }}>
                           <Typography variant="body2" sx={{ color: '#aaa' }}>Symbol</Typography>
                           <Typography variant="body2" sx={{ color: '#aaa', textAlign: 'right' }}>Shares</Typography>
-                          <Typography variant="body2" sx={{ color: '#aaa', textAlign: 'right' }}>Price</Typography>
+                          {!isMobile && <Typography variant="body2" sx={{ color: '#aaa', textAlign: 'right' }}>Price</Typography>}
                           <Typography variant="body2" sx={{ color: '#aaa', textAlign: 'right' }}>Value</Typography>
                         </Box>
                         
@@ -439,7 +625,7 @@ export default function Home() {
                             key={stock.symbol}
                             sx={{ 
                               display: 'grid', 
-                              gridTemplateColumns: '1fr 1fr 1fr 1fr',
+                              gridTemplateColumns: isMobile ? '2fr 1fr 1fr' : '1fr 1fr 1fr 1fr',
                               py: 1,
                               borderBottom: '1px solid rgba(255,255,255,0.05)'
                             }}
@@ -450,9 +636,11 @@ export default function Home() {
                             <Typography variant="body1" sx={{ color: '#fff', textAlign: 'right' }}>
                               {stock.shares}
                             </Typography>
-                            <Typography variant="body1" sx={{ color: '#fff', textAlign: 'right' }}>
-                              ${(stock.currentPrice || 0).toFixed(2)}
-                            </Typography>
+                            {!isMobile && (
+                              <Typography variant="body1" sx={{ color: '#fff', textAlign: 'right' }}>
+                                ${(stock.currentPrice || 0).toFixed(2)}
+                              </Typography>
+                            )}
                             <Typography variant="body1" sx={{ color: '#4caf50', textAlign: 'right', fontWeight: 'medium' }}>
                               ${(stock.value || 0).toFixed(2)}
                             </Typography>
@@ -498,161 +686,6 @@ export default function Home() {
                 </Card>
               </Grid>
             </Grid>
-          ) : (
-            // Before stock search - Different layout
-            <Grid container spacing={3}>
-              <Grid item xs={12} md={7}>
-                <Card sx={{ 
-                  bgcolor: '#1E1E1E', 
-                  borderRadius: 2,
-                  border: '1px solid #333'
-                }}>
-                  <CardContent>
-                    <Box sx={{ 
-                      display: 'flex', 
-                      alignItems: 'center', 
-                      mb: 3,
-                      pb: 2,
-                      borderBottom: '1px solid #333'
-                    }}>
-                      <AccountBalanceWalletIcon sx={{ color: '#4caf50', mr: 1, fontSize: 28 }} />
-                      <Typography variant="h6" sx={{ color: '#fff' }}>
-                        Trade Stocks
-                      </Typography>
-                    </Box>
-                    
-                    <TradingPanel selectedStockFromParent={selectedStock} />
-                  </CardContent>
-                </Card>
-              </Grid>
-              
-              <Grid item xs={12} md={5}>
-                <Card sx={{ 
-                  bgcolor: '#1E1E1E', 
-                  borderRadius: 2,
-                  border: '1px solid #333',
-                  mb: 3
-                }}>
-                  <CardContent>
-                    <Box sx={{ 
-                      display: 'flex', 
-                      alignItems: 'center', 
-                      mb: 3,
-                      pb: 2,
-                      borderBottom: '1px solid #333'
-                    }}>
-                      <ShowChartIcon sx={{ color: '#4caf50', mr: 1, fontSize: 28 }} />
-                      <Typography variant="h6" sx={{ color: '#fff' }}>
-                        Market Overview
-                      </Typography>
-                    </Box>
-                    <TopGainers maxItems={5} />
-                  </CardContent>
-                </Card>
-
-                <Card sx={{ 
-                  bgcolor: '#1E1E1E', 
-                  borderRadius: 2,
-                  border: '1px solid #333'
-                }}>
-                  <CardContent>
-                    <PortfolioPieChart 
-                      cashBalance={cashBalance} 
-                      stocksValue={stocksValue} 
-                    />
-                  </CardContent>
-                </Card>
-
-                <Card sx={{ 
-                  bgcolor: '#1E1E1E', 
-                  borderRadius: 2,
-                  border: '1px solid #333',
-                  mt: 3
-                }}>
-                  <CardContent>
-                    <Typography variant="h6" sx={{ color: '#fff', mb: 2 }}>
-                      Your Portfolio
-                    </Typography>
-                    
-                    {portfolio.length > 0 ? (
-                      <Box>
-                        <Box sx={{ 
-                          display: 'grid', 
-                          gridTemplateColumns: '1fr 1fr 1fr 1fr', 
-                          borderBottom: '1px solid #333',
-                          pb: 1,
-                          mb: 1
-                        }}>
-                          <Typography variant="body2" sx={{ color: '#aaa' }}>Symbol</Typography>
-                          <Typography variant="body2" sx={{ color: '#aaa', textAlign: 'right' }}>Shares</Typography>
-                          <Typography variant="body2" sx={{ color: '#aaa', textAlign: 'right' }}>Price</Typography>
-                          <Typography variant="body2" sx={{ color: '#aaa', textAlign: 'right' }}>Value</Typography>
-                        </Box>
-                        
-                        {portfolio.map((stock) => (
-                          <Box 
-                            key={stock.symbol}
-                            sx={{ 
-                              display: 'grid', 
-                              gridTemplateColumns: '1fr 1fr 1fr 1fr',
-                              py: 1,
-                              borderBottom: '1px solid rgba(255,255,255,0.05)'
-                            }}
-                          >
-                            <Typography variant="body1" sx={{ color: '#fff', fontWeight: 'medium' }}>
-                              {stock.symbol}
-                            </Typography>
-                            <Typography variant="body1" sx={{ color: '#fff', textAlign: 'right' }}>
-                              {stock.shares}
-                            </Typography>
-                            <Typography variant="body1" sx={{ color: '#fff', textAlign: 'right' }}>
-                              ${(stock.currentPrice || 0).toFixed(2)}
-                            </Typography>
-                            <Typography variant="body1" sx={{ color: '#4caf50', textAlign: 'right', fontWeight: 'medium' }}>
-                              ${(stock.value || 0).toFixed(2)}
-                            </Typography>
-                          </Box>
-                        ))}
-                        
-                        <Box sx={{ 
-                          display: 'flex', 
-                          justifyContent: 'space-between',
-                          mt: 2,
-                          pt: 1,
-                          borderTop: '1px solid #333'
-                        }}>
-                          <Typography variant="body1" sx={{ color: '#fff', fontWeight: 'medium' }}>
-                            Total Portfolio Value:
-                          </Typography>
-                          <Typography variant="body1" sx={{ color: '#4caf50', fontWeight: 'bold' }}>
-                            ${(stocksValue).toFixed(2)}
-                          </Typography>
-                        </Box>
-                      </Box>
-                    ) : (
-                      <Box sx={{ textAlign: 'center', py: 2 }}>
-                        <Typography variant="body1" sx={{ color: '#aaa' }}>
-                          You don't own any stocks yet.
-                        </Typography>
-                        <Button 
-                          variant="contained" 
-                          sx={{ 
-                            mt: 2, 
-                            bgcolor: '#4caf50',
-                            '&:hover': {
-                              bgcolor: '#3d8b40'
-                            }
-                          }}
-                          onClick={focusOnSearch}
-                        >
-                          START TRADING
-                        </Button>
-                      </Box>
-                    )}
-                  </CardContent>
-                </Card>
-              </Grid>
-            </Grid>
           )}
         </>
       )}
@@ -669,6 +702,9 @@ export default function Home() {
       )}
       
       {activeTab === 'profile' && <ProfileSection />}
+      
+      {/* Add the mobile navigation at the end */}
+      <MobileNavigation />
     </Box>
   );
 } 

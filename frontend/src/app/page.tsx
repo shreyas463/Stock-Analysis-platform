@@ -399,7 +399,10 @@ export default function Home() {
           mb: 3
         }}>
           <Box sx={{ width: '100%', maxWidth: 600 }}>
-            <SearchBar onStockSelect={handleSearch} inputRef={searchInputRef} />
+            <SearchBar 
+              onStockSelect={(symbol: string) => setSelectedStock(symbol)} 
+              inputRef={searchInputRef}
+            />
           </Box>
           
           <Box>
@@ -544,7 +547,7 @@ export default function Home() {
                     </Box>
                     
                     <Box sx={{ mb: 3 }}>
-                      <SearchBar onStockSelect={handleSearch} inputRef={searchInputRef} />
+                      <SearchBar onSearch={handleSearch} inputRef={searchInputRef} />
                     </Box>
                     
                     <TradingPanel selectedStockFromParent={selectedStock} />

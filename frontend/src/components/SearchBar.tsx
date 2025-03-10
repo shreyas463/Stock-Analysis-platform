@@ -17,11 +17,12 @@ interface SearchResult {
 }
 
 interface SearchBarProps {
-  onStockSelect: (symbol: string) => void;
+  onStockSelect?: (symbol: string) => void;
+  onSearch?: (query: string) => void;
   inputRef?: React.RefObject<HTMLInputElement>;
 }
 
-export default function SearchBar({ onStockSelect, inputRef }: SearchBarProps) {
+export default function SearchBar({ onStockSelect, onSearch, inputRef }: SearchBarProps) {
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState<SearchResult[]>([]);
   const [isOpen, setIsOpen] = useState(false);
@@ -85,7 +86,12 @@ export default function SearchBar({ onStockSelect, inputRef }: SearchBarProps) {
   const handleSelect = (symbol: string) => {
     setSearchQuery(symbol);
     setSearchResults([]);
-    onStockSelect(symbol);
+    if (onStockSelect) {
+      onStockSelect(symbol);
+    }
+    if (onSearch) {
+      onSearch(symbol);
+    }
   };
 
   return (

@@ -16,6 +16,7 @@ interface GainerStock {
 
 interface TopGainersProps {
   maxItems?: number;
+  onSelectStock?: (symbol: string) => void;
 }
 
 // Fallback data in case the API doesn't return any stocks
@@ -27,7 +28,7 @@ const fallbackGainers: GainerStock[] = [
   { symbol: 'NVDA', price: 950.02, change: 2.35 }
 ];
 
-const TopGainers: React.FC<TopGainersProps> = ({ maxItems }) => {
+const TopGainers: React.FC<TopGainersProps> = ({ maxItems = 10, onSelectStock }) => {
   // Initialize with fallback data immediately
   const [gainers, setGainers] = useState<GainerStock[]>(fallbackGainers);
   const [loading, setLoading] = useState(false);
@@ -60,6 +61,13 @@ const TopGainers: React.FC<TopGainersProps> = ({ maxItems }) => {
   // Limit the number of gainers displayed based on maxItems prop
   const displayedGainers = maxItems ? gainers.slice(0, maxItems) : gainers;
 
+  // Add a function to handle stock selection
+  const handleStockClick = (symbol: string) => {
+    if (onSelectStock) {
+      onSelectStock(symbol);
+    }
+  };
+
   return (
     <Box>
       {/* Stocks list */}
@@ -76,25 +84,20 @@ const TopGainers: React.FC<TopGainersProps> = ({ maxItems }) => {
         ) : (
           // Actual data
           displayedGainers.map((stock, index) => (
-            <Paper
+            <Box 
               key={index}
-              sx={{
-                p: 1.5,
-                mb: 1.5,
-                bgcolor: '#1E2132',
-                borderRadius: 2,
-                border: '1px solid',
-                borderColor: 'rgba(255, 255, 255, 0.05)',
-                transition: 'all 0.2s',
-                '&:hover': {
-                  bgcolor: '#252A3D',
-                  transform: 'translateY(-2px)',
-                  boxShadow: '0 4px 8px rgba(0, 0, 0, 0.2)'
-                },
+              sx={{ 
                 display: 'flex',
                 justifyContent: 'space-between',
-                alignItems: 'center'
+                alignItems: 'center',
+                py: 1.5,
+                borderBottom: '1px solid rgba(255,255,255,0.1)',
+                cursor: onSelectStock ? 'pointer' : 'default',
+                '&:hover': {
+                  bgcolor: onSelectStock ? 'rgba(255,255,255,0.05)' : 'transparent'
+                }
               }}
+              onClick={() => onSelectStock && handleStockClick(stock.symbol)}
             >
               <Box>
                 <Typography variant="subtitle1" sx={{ color: '#e0e0e0', fontWeight: 'bold' }}>
@@ -115,7 +118,7 @@ const TopGainers: React.FC<TopGainersProps> = ({ maxItems }) => {
                 }}
                 size="small"
               />
-            </Paper>
+            </Box>
           ))
         )}
       </Box>

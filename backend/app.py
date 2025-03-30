@@ -891,6 +891,42 @@ def create_discussion(current_user):
 @app.route('/api/market/top-gainers', methods=['GET'])
 def get_top_gainers():
     try:
+        # Log the request for debugging
+        logger.info("Received request for top gainers")
+        
+        # Check if we should use real API or mock data
+        use_mock = request.args.get('mock', 'false').lower() == 'true'
+        
+        if use_mock or not FINNHUB_KEY or FINNHUB_KEY == "sandbox_dummy_key":
+            # Generate dynamic mock data with timestamp to show it's updating
+            current_time = datetime.now()
+            logger.info(f"Using mock data at {current_time}")
+            
+            # Create dynamic prices based on current time to simulate real-time changes
+            seed = current_time.second + current_time.minute * 60
+            random.seed(seed)
+            
+            mock_gainers = [
+                {'symbol': 'AAPL', 'price': 175.34 + random.uniform(-2, 2), 'change': 2.45 + random.uniform(-0.5, 0.5)},
+                {'symbol': 'MSFT', 'price': 328.79 + random.uniform(-3, 3), 'change': 1.98 + random.uniform(-0.3, 0.3)},
+                {'symbol': 'AMZN', 'price': 178.15 + random.uniform(-2, 2), 'change': 1.75 + random.uniform(-0.4, 0.4)},
+                {'symbol': 'GOOGL', 'price': 142.56 + random.uniform(-1.5, 1.5), 'change': 1.52 + random.uniform(-0.3, 0.3)},
+                {'symbol': 'NVDA', 'price': 824.12 + random.uniform(-10, 10), 'change': 3.21 + random.uniform(-0.6, 0.6)}
+            ]
+            
+            # Ensure all changes are positive
+            for stock in mock_gainers:
+                if stock['change'] <= 0:
+                    stock['change'] = random.uniform(0.5, 2.0)
+                    
+            logger.info(f"Returning mock data: {mock_gainers}")
+            response = jsonify(mock_gainers)
+            # Add cache control headers
+            response.headers['Cache-Control'] = 'no-cache, no-store, must-revalidate'
+            response.headers['Pragma'] = 'no-cache'
+            response.headers['Expires'] = '0'
+            return response
+            
         # Get market news from Finnhub to identify active stocks
         try:
             market_news = finnhub_client.general_news('general', min_id=0)
@@ -934,29 +970,49 @@ def get_top_gainers():
         # If we couldn't get any real gainers, create mock data
         if not gainers:
             logger.warning("No real gainers found, using mock data")
+            current_time = datetime.now()
+            random.seed(current_time.second + current_time.minute * 60)
+            
             mock_gainers = [
-                {'symbol': 'AAPL', 'price': 175.34, 'change': 2.45},
-                {'symbol': 'MSFT', 'price': 328.79, 'change': 1.98},
-                {'symbol': 'AMZN', 'price': 178.15, 'change': 1.75},
-                {'symbol': 'GOOGL', 'price': 142.56, 'change': 1.52},
-                {'symbol': 'NVDA', 'price': 824.12, 'change': 3.21}
+                {'symbol': 'AAPL', 'price': 175.34 + random.uniform(-2, 2), 'change': 2.45 + random.uniform(0, 0.5)},
+                {'symbol': 'MSFT', 'price': 328.79 + random.uniform(-3, 3), 'change': 1.98 + random.uniform(0, 0.3)},
+                {'symbol': 'AMZN', 'price': 178.15 + random.uniform(-2, 2), 'change': 1.75 + random.uniform(0, 0.4)},
+                {'symbol': 'GOOGL', 'price': 142.56 + random.uniform(-1.5, 1.5), 'change': 1.52 + random.uniform(0, 0.3)},
+                {'symbol': 'NVDA', 'price': 824.12 + random.uniform(-10, 10), 'change': 3.21 + random.uniform(0, 0.6)}
             ]
-            return jsonify(mock_gainers)
-
-        # Sort by percentage change (descending) and take top 5
-        gainers.sort(key=lambda x: x['change'], reverse=True)
-        return jsonify(gainers[:5])
+            logger.info(f"Returning generated mock data: {mock_gainers}")
+            response = jsonify(mock_gainers)
+        else:
+            # Sort by percentage change (descending) and take top 5
+            gainers.sort(key=lambda x: x['change'], reverse=True)
+            logger.info(f"Returning real gainers data: {gainers[:5]}")
+            response = jsonify(gainers[:5])
+            
+        # Add cache control headers
+        response.headers['Cache-Control'] = 'no-cache, no-store, must-revalidate'
+        response.headers['Pragma'] = 'no-cache'
+        response.headers['Expires'] = '0'
+        return response
     except Exception as e:
         logger.error(f"Error fetching top gainers: {str(e)}")
         # Return mock data in case of any error
+        current_time = datetime.now()
+        random.seed(current_time.second + current_time.minute * 60)
+        
         mock_gainers = [
-            {'symbol': 'AAPL', 'price': 175.34, 'change': 2.45},
-            {'symbol': 'MSFT', 'price': 328.79, 'change': 1.98},
-            {'symbol': 'AMZN', 'price': 178.15, 'change': 1.75},
-            {'symbol': 'GOOGL', 'price': 142.56, 'change': 1.52},
-            {'symbol': 'NVDA', 'price': 824.12, 'change': 3.21}
+            {'symbol': 'AAPL', 'price': 175.34 + random.uniform(-2, 2), 'change': 2.45},
+            {'symbol': 'MSFT', 'price': 328.79 + random.uniform(-3, 3), 'change': 1.98},
+            {'symbol': 'AMZN', 'price': 178.15 + random.uniform(-2, 2), 'change': 1.75},
+            {'symbol': 'GOOGL', 'price': 142.56 + random.uniform(-1.5, 1.5), 'change': 1.52},
+            {'symbol': 'NVDA', 'price': 824.12 + random.uniform(-10, 10), 'change': 3.21}
         ]
-        return jsonify(mock_gainers)
+        
+        logger.info(f"Returning error fallback mock data: {mock_gainers}")
+        response = jsonify(mock_gainers)
+        response.headers['Cache-Control'] = 'no-cache, no-store, must-revalidate'
+        response.headers['Pragma'] = 'no-cache'
+        response.headers['Expires'] = '0'
+        return response
 
 
 @app.route('/api/search', methods=['GET'])

@@ -9,7 +9,7 @@ import {
   User as FirebaseUser
 } from 'firebase/auth';
 import { doc, setDoc, getDoc, serverTimestamp } from 'firebase/firestore';
-import { auth, db } from '@/firebase/config';
+import { auth, db } from '@/firebase/firebase-setup';
 
 interface AuthContextType {
   user: User | null;

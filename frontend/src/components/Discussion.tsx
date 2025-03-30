@@ -15,7 +15,7 @@ import {
   IconButton,
   InputAdornment
 } from '@mui/material';
-import { auth } from '@/firebase/config';
+import { auth } from '@/firebase/firebase-setup';
 import SendIcon from '@mui/icons-material/Send';
 import ChatIcon from '@mui/icons-material/Chat';
 

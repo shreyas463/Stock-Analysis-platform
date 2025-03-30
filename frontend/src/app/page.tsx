@@ -12,7 +12,7 @@ import StockAnalysisLogo from '@/components/StockAnalysisLogo';
 import PortfolioPieChart from '@/components/PortfolioPieChart';
 import { useAuth } from '@/contexts/AuthContext';
 import { useRouter } from 'next/navigation';
-import { auth } from '@/firebase/config';
+import { auth } from '@/firebase/firebase-setup';
 import SearchIcon from '@mui/icons-material/Search';
 import ShowChartIcon from '@mui/icons-material/ShowChart';
 import AccountBalanceWalletIcon from '@mui/icons-material/AccountBalanceWallet';

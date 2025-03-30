@@ -34,7 +34,7 @@ import {
   Grid,
 } from '@mui/material';
 import { useTheme } from '@mui/material/styles';
-import { auth } from '@/firebase/config';
+import { auth } from '@/firebase/firebase-setup';
 import TrendingUpIcon from '@mui/icons-material/TrendingUp';
 import TrendingDownIcon from '@mui/icons-material/TrendingDown';
 import InfoOutlinedIcon from '@mui/icons-material/InfoOutlined';

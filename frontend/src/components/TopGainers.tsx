@@ -4,7 +4,6 @@ import React, { useEffect, useState } from 'react';
 import { Box, Typography, Paper, Skeleton, Chip } from '@mui/material';
 import TrendingUpIcon from '@mui/icons-material/TrendingUp';
 import ArrowUpwardIcon from '@mui/icons-material/ArrowUpward';
-import ShowChartIcon from '@mui/icons-material/ShowChart';
 
 const API_BASE_URL = 'http://localhost:5001';
 
@@ -27,99 +26,141 @@ const fallbackGainers: GainerStock[] = [
   { symbol: 'NVDA', price: 950.02, change: 2.35 }
 ];
 
-const TopGainers: React.FC<TopGainersProps> = ({ maxItems }) => {
-  // Initialize with fallback data immediately
+const TopGainers: React.FC<TopGainersProps> = ({ maxItems = 5 }) => {
   const [gainers, setGainers] = useState<GainerStock[]>(fallbackGainers);
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
     const fetchGainers = async () => {
+      setLoading(true);
       try {
-        const response = await fetch(`${API_BASE_URL}/api/market/top-gainers`);
-        const data = await response.json();
+        console.log('Fetching top gainers data...');
+        const response = await fetch(`${API_BASE_URL}/api/market/top-gainers`, {
+          cache: 'no-store',
+          headers: {
+            'Cache-Control': 'no-cache',
+            'Pragma': 'no-cache'
+          }
+        });
         
-        // Use the API data if available, otherwise keep using fallback data
+        if (!response.ok) {
+          throw new Error(`API error: ${response.status}`);
+        }
+        
+        const data = await response.json();
+        console.log('Received data:', data);
+        
         if (data && Array.isArray(data) && data.length > 0) {
+          console.log('Updating gainers with new data');
           setGainers(data);
         } else {
           console.log('No gainers data from API, using fallback data');
-          // Keep using fallback data (already set in state)
         }
       } catch (error) {
         console.error('Error fetching top gainers:', error);
-        // Keep using fallback data (already set in state)
+      } finally {
+        setLoading(false);
       }
     };
 
-    // Try to fetch real data, but we already have fallback data displayed
+    // Initial fetch
     fetchGainers();
-    const interval = setInterval(fetchGainers, 60000); // Refresh every minute
-    return () => clearInterval(interval);
+    
+    // Set up polling every 5 seconds for more frequent updates
+    const intervalId = setInterval(fetchGainers, 5000);
+    console.log('Set up polling interval for top gainers');
+    
+    return () => {
+      console.log('Cleaning up polling interval');
+      clearInterval(intervalId);
+    };
   }, []);
 
-  // Limit the number of gainers displayed based on maxItems prop
-  const displayedGainers = maxItems ? gainers.slice(0, maxItems) : gainers;
-
   return (
-    <Box>
-      {/* Stocks list */}
-      <Box>
-        {loading ? (
-          // Loading skeletons
-          Array.from(new Array(5)).map((_, index) => (
-            <Box key={index} sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
-              <Skeleton variant="rectangular" width={60} height={24} sx={{ mr: 2 }} />
-              <Skeleton variant="rectangular" width={80} height={24} sx={{ mr: 2 }} />
-              <Skeleton variant="rectangular" width={60} height={24} />
-            </Box>
-          ))
-        ) : (
-          // Actual data
-          displayedGainers.map((stock, index) => (
-            <Paper
-              key={index}
-              sx={{
-                p: 1.5,
-                mb: 1.5,
-                bgcolor: '#1E2132',
-                borderRadius: 2,
-                border: '1px solid',
-                borderColor: 'rgba(255, 255, 255, 0.05)',
-                transition: 'all 0.2s',
-                '&:hover': {
-                  bgcolor: '#252A3D',
-                  transform: 'translateY(-2px)',
-                  boxShadow: '0 4px 8px rgba(0, 0, 0, 0.2)'
-                },
-                display: 'flex',
-                justifyContent: 'space-between',
-                alignItems: 'center'
-              }}
-            >
-              <Box>
-                <Typography variant="subtitle1" sx={{ color: '#e0e0e0', fontWeight: 'bold' }}>
-                  {stock.symbol}
-                </Typography>
-                <Typography variant="body2" sx={{ color: '#9e9e9e' }}>
-                  ${stock.price.toFixed(2)}
-                </Typography>
-              </Box>
-              <Chip
-                icon={<ArrowUpwardIcon fontSize="small" />}
-                label={`+${stock.change.toFixed(2)}%`}
-                sx={{
-                  bgcolor: 'rgba(105, 240, 174, 0.1)',
-                  color: '#69f0ae',
-                  fontWeight: 'bold',
-                  border: '1px solid rgba(105, 240, 174, 0.2)'
-                }}
-                size="small"
-              />
-            </Paper>
-          ))
-        )}
+    <Paper
+      elevation={0}
+      sx={{
+        p: 2,
+        bgcolor: 'transparent',
+        border: '1px solid rgba(255, 255, 255, 0.1)',
+        borderRadius: 2,
+      }}
+    >
+      <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
+        <TrendingUpIcon sx={{ mr: 1, color: '#4CAF50' }} />
+        <Typography variant="h6" component="h2" sx={{ color: '#fff' }}>
+          Market Overview
+        </Typography>
       </Box>
-    </Box>
+
+      {loading ? (
+        Array.from({ length: maxItems }).map((_, index) => (
+          <Box
+            key={`skeleton-${index}`}
+            sx={{
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+              py: 1,
+              borderBottom:
+                index < maxItems - 1
+                  ? '1px solid rgba(255, 255, 255, 0.1)'
+                  : 'none',
+            }}
+          >
+            <Skeleton width={60} height={24} />
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+              <Skeleton width={80} height={24} />
+              <Skeleton width={60} height={24} />
+            </Box>
+          </Box>
+        ))
+      ) : (
+        gainers.slice(0, maxItems).map((stock, index) => (
+          <Box
+            key={stock.symbol}
+            sx={{
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+              py: 1,
+              borderBottom:
+                index < maxItems - 1
+                  ? '1px solid rgba(255, 255, 255, 0.1)'
+                  : 'none',
+            }}
+          >
+            <Box sx={{ display: 'flex', alignItems: 'center' }}>
+              <Typography
+                variant="body1"
+                sx={{ color: '#fff', fontWeight: 'medium' }}
+              >
+                {stock.symbol}
+              </Typography>
+            </Box>
+
+            <Box sx={{ display: 'flex', alignItems: 'center' }}>
+              <Typography
+                variant="body1"
+                sx={{ color: '#fff', mr: 2, textAlign: 'right' }}
+              >
+                ${stock.price.toFixed(2)}
+              </Typography>
+              <Chip
+                icon={<ArrowUpwardIcon />}
+                label={`+${stock.change.toFixed(2)}%`}
+                size="small"
+                sx={{
+                  bgcolor: 'rgba(76, 175, 80, 0.1)',
+                  color: '#4CAF50',
+                  '& .MuiChip-icon': { color: '#4CAF50' },
+                }}
+              />
+            </Box>
+          </Box>
+        ))
+      )}
+    </Paper>
   );
 };
 

@@ -22,8 +22,9 @@ import DashboardIcon from '@mui/icons-material/Dashboard';
 import ForumIcon from '@mui/icons-material/Forum';
 import ExitToAppIcon from '@mui/icons-material/ExitToApp';
 import PersonIcon from '@mui/icons-material/Person';
+import ApiDebugger from '@/components/ApiDebugger';
 
-const API_BASE_URL = 'http://localhost:5001';
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5001';
 
 export default function Home() {
   const [selectedStock, setSelectedStock] = useState<string | null>(null);
@@ -161,11 +162,14 @@ export default function Home() {
 
   // Profile component
   const ProfileSection = () => (
-    <Card sx={{ bgcolor: '#1E1E1E', borderRadius: 2, p: 2 }}>
-      <CardContent>
-        <Typography variant="h6" sx={{ color: '#4caf50', mb: 3, fontWeight: 600 }}>
-          Profile Information
-        </Typography>
+    <Box>
+      <ApiDebugger />
+      
+      <Card sx={{ bgcolor: '#1E1E1E', borderRadius: 2, p: 2, mt: 4 }}>
+        <CardContent>
+          <Typography variant="h6" sx={{ color: '#4caf50', mb: 3, fontWeight: 600 }}>
+            Profile Information
+          </Typography>
         
         <Grid container spacing={3}>
           <Grid item xs={12} md={6}>
@@ -258,6 +262,7 @@ export default function Home() {
         </Grid>
       </CardContent>
     </Card>
+    </Box>
   );
 
   return (

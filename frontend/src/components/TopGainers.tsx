@@ -5,7 +5,7 @@ import { Box, Typography, Paper, Skeleton, Chip } from '@mui/material';
 import TrendingUpIcon from '@mui/icons-material/TrendingUp';
 import ArrowUpwardIcon from '@mui/icons-material/ArrowUpward';
 
-const API_BASE_URL = 'http://localhost:5001';
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5001';
 
 interface GainerStock {
   symbol: string;

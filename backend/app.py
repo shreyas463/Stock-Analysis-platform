@@ -1375,17 +1375,33 @@ def get_stock_quote(current_user):
         return jsonify({'error': 'Symbol parameter is required'}), 400
 
     try:
+        # Log API key status to help with debugging
+        api_key_status = "configured" if FINNHUB_KEY and FINNHUB_KEY != "sandbox_dummy_key" else "not properly configured"
+        logger.info(f"Fetching quote for {symbol}. Finnhub API key status: {api_key_status}")
+        
         # Get quote from Finnhub
         quote = finnhub_client.quote(symbol)
+        
+        logger.info(f"Quote response for {symbol}: {quote}")
 
         # If quote is empty or invalid, return error
-        if not quote or 'c' not in quote:
-            return jsonify({'error': f'Could not fetch quote for {symbol}'}), 404
+        if not quote:
+            return jsonify({'error': f'Empty response from Finnhub for {symbol}'}), 404
+        
+        if 'c' not in quote:
+            return jsonify({
+                'error': f'Incomplete quote data for {symbol}', 
+                'data': quote,
+                'api_key_status': api_key_status
+            }), 404
 
         return jsonify(quote)
     except Exception as e:
         logger.error(f"Error fetching quote for {symbol}: {str(e)}")
-        return jsonify({'error': 'Failed to fetch stock quote'}), 500
+        return jsonify({
+            'error': f'Failed to fetch stock quote: {str(e)}',
+            'api_key_status': 'configured' if FINNHUB_KEY and FINNHUB_KEY != "sandbox_dummy_key" else 'not properly configured'
+        }), 500
 
 
 # Test endpoint without authentication for development

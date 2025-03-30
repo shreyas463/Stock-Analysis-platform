@@ -325,6 +325,7 @@ export default function TradingPanel({ selectedStockFromParent }: TradingPanelPr
       }
       
       console.log(`Fetching price for ${selectedStock}, attempt ${retryCount + 1}`);
+      console.log(`Using API URL: ${API_BASE_URL}/api/market/quote?symbol=${selectedStock}`);
       
       const response = await fetch(`${API_BASE_URL}/api/market/quote?symbol=${selectedStock}`, {
         headers: {
@@ -333,10 +334,13 @@ export default function TradingPanel({ selectedStockFromParent }: TradingPanelPr
       });
       
       if (!response.ok) {
+        const errorText = await response.text().catch(() => 'No error details');
+        console.error(`API Error: ${response.status} ${response.statusText}`, errorText);
         throw new Error(`Failed to fetch stock price: ${response.status} ${response.statusText}`);
       }
       
       const data = await response.json();
+      console.log('Stock price data received:', data);
       
       if (data && typeof data.c === 'number') {
         setCurrentPrice(data.c);
@@ -345,8 +349,12 @@ export default function TradingPanel({ selectedStockFromParent }: TradingPanelPr
           percentage: data.dp ? `${data.dp > 0 ? '+' : ''}${data.dp.toFixed(2)}%` : '+0.00%'
         });
         setError('');
+      } else if (data.error) {
+        console.error('API error:', data.error);
+        throw new Error(`API error: ${data.error}`);
       } else {
-        throw new Error('Invalid price data received');
+        console.error('Invalid price data received:', data);
+        throw new Error('Invalid price data received. Finnhub API may not be configured properly.');
       }
     } catch (error) {
       console.error(`Error fetching stock price for ${selectedStock}:`, error);

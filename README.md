@@ -8,6 +8,7 @@
 [![Flask](https://img.shields.io/badge/backend-Flask-black?style=for-the-badge&logo=flask)](https://flask.palletsprojects.com/)
 [![Firebase](https://img.shields.io/badge/database-Firebase-orange?style=for-the-badge&logo=firebase)](https://firebase.google.com/)
 [![Finnhub](https://img.shields.io/badge/API-Finnhub-blue?style=for-the-badge)](https://finnhub.io/)
+[![License](https://img.shields.io/badge/license-Apache%202.0-green?style=for-the-badge)](https://www.apache.org/licenses/LICENSE-2.0)
 
 </div>
 
@@ -188,6 +189,10 @@ This application is deployed using a modern cloud architecture:
   - Continuous deployment from GitHub
 
 For detailed deployment instructions, see [DEPLOYMENT.md](DEPLOYMENT.md)
+
+## 📄 License
+
+This project is licensed under the Apache License 2.0 - see the [LICENSE](LICENSE) file for details.
 
 ## 🔄 Latest Updates
 

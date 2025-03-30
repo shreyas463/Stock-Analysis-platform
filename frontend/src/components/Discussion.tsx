@@ -16,6 +16,8 @@ import {
   InputAdornment
 } from '@mui/material';
 import { auth } from '@/firebase/firebase-setup';
+
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5001';
 import SendIcon from '@mui/icons-material/Send';
 import ChatIcon from '@mui/icons-material/Chat';
 
@@ -59,7 +61,7 @@ export default function Discussion() {
         return;
       }
       
-      const response = await fetch('http://localhost:5001/api/discussions', {
+      const response = await fetch(`${API_BASE_URL}/api/discussions`, {
         headers: {
           'Authorization': `Bearer ${token}`,
         },
@@ -105,7 +107,7 @@ export default function Discussion() {
         return;
       }
       
-      const response = await fetch('http://localhost:5001/api/discussions', {
+      const response = await fetch(`${API_BASE_URL}/api/discussions`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

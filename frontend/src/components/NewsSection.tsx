@@ -1,6 +1,8 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
+
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5001';
 import {
   Box,
   List,
@@ -35,7 +37,7 @@ export default function NewsSection({ symbol }: NewsSectionProps) {
       setLoading(true);
       setError(null);
       try {
-        const response = await fetch(`http://localhost:5001/api/stock/${symbol}/news`);
+        const response = await fetch(`${API_BASE_URL}/api/stock/${symbol}/news`);
         const data = await response.json();
         if (response.ok) {
           setNews(data);

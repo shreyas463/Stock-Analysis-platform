@@ -1,6 +1,8 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
+
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5001';
 import {
   Card,
   CardContent,
@@ -161,7 +163,7 @@ export default function TradingPanel({ selectedStockFromParent }: TradingPanelPr
         setError('Please log in to view your balance');
         return;
       }
-      const response = await fetch('http://localhost:5001/api/trading/balance', {
+      const response = await fetch(`${API_BASE_URL}/api/trading/balance`, {
         headers: {
           'Authorization': `Bearer ${token}`
         }
@@ -190,7 +192,7 @@ export default function TradingPanel({ selectedStockFromParent }: TradingPanelPr
         setError('Please log in to view your transactions');
         return;
       }
-      const response = await fetch('http://localhost:5001/api/trading/transactions', {
+      const response = await fetch(`${API_BASE_URL}/api/trading/transactions`, {
         headers: {
           'Authorization': `Bearer ${token}`
         }
@@ -209,7 +211,7 @@ export default function TradingPanel({ selectedStockFromParent }: TradingPanelPr
       
       console.log('Fetching sold stocks...');
       
-      const response = await fetch('http://localhost:5001/api/trading/transactions', {
+      const response = await fetch(`${API_BASE_URL}/api/trading/transactions`, {
         headers: {
           'Authorization': `Bearer ${token}`
         }
@@ -276,7 +278,7 @@ export default function TradingPanel({ selectedStockFromParent }: TradingPanelPr
         return;
       }
       
-      const response = await fetch('http://localhost:5001/api/trading/add-funds', {
+      const response = await fetch(`${API_BASE_URL}/api/trading/add-funds`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -324,7 +326,7 @@ export default function TradingPanel({ selectedStockFromParent }: TradingPanelPr
       
       console.log(`Fetching price for ${selectedStock}, attempt ${retryCount + 1}`);
       
-      const response = await fetch(`http://localhost:5001/api/market/quote?symbol=${selectedStock}`, {
+      const response = await fetch(`${API_BASE_URL}/api/market/quote?symbol=${selectedStock}`, {
         headers: {
           'Authorization': `Bearer ${token}`
         }
@@ -400,7 +402,7 @@ export default function TradingPanel({ selectedStockFromParent }: TradingPanelPr
         setIsAnalyzing(true);
         
         try {
-          const response = await fetch(`http://localhost:5001/api/trading/analyze-stock?symbol=${selectedStock}&days=${analysisDays}&indicator=${selectedIndicator}`, {
+          const response = await fetch(`${API_BASE_URL}/api/trading/analyze-stock?symbol=${selectedStock}&days=${analysisDays}&indicator=${selectedIndicator}`, {
             headers: {
               'Authorization': `Bearer ${token}`
             }
@@ -446,7 +448,7 @@ export default function TradingPanel({ selectedStockFromParent }: TradingPanelPr
 
       // Regular buy/sell or after ML analysis confirmation
       const endpoint = type === 'buy' ? '/api/trading/buy' : '/api/trading/sell';
-      const response = await fetch(`http://localhost:5001${endpoint}`, {
+      const response = await fetch(`${API_BASE_URL}${endpoint}`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -494,7 +496,7 @@ export default function TradingPanel({ selectedStockFromParent }: TradingPanelPr
         return;
       }
 
-      const response = await fetch('http://localhost:5001/api/trading/buy', {
+      const response = await fetch(`${API_BASE_URL}/api/trading/buy`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -537,7 +539,7 @@ export default function TradingPanel({ selectedStockFromParent }: TradingPanelPr
       
       // Include the days parameter in the request
       const response = await fetch(
-        `http://localhost:5001/api/trading/alternative-stocks?sector=technology&budget=${analysisResult.total_cost}&days=${analysisDays}`,
+        `${API_BASE_URL}/api/trading/alternative-stocks?sector=technology&budget=${analysisResult.total_cost}&days=${analysisDays}`,
         {
           method: 'GET',
           headers: {
@@ -1076,7 +1078,7 @@ export default function TradingPanel({ selectedStockFromParent }: TradingPanelPr
       
       console.log('Sending sell request with payload:', payload);
       
-      const response = await fetch(`http://localhost:5001/api/trading/sell`, {
+      const response = await fetch(`${API_BASE_URL}/api/trading/sell`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

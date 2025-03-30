@@ -1,6 +1,8 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
+
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5001';
 import {
   Chart as ChartJS,
   CategoryScale,
@@ -74,7 +76,7 @@ export default function CandlestickChart({ symbol }: CandlestickChartProps) {
       setLoading(true);
       setError(null);
       try {
-        const response = await fetch(`http://localhost:5001/api/stock/${symbol}`);
+        const response = await fetch(`${API_BASE_URL}/api/stock/${symbol}`);
         const result = await response.json();
         
         if (response.ok && result.quote && result.historical) {

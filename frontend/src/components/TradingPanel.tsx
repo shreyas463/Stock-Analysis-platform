@@ -723,20 +723,20 @@ export default function TradingPanel({ selectedStockFromParent }: TradingPanelPr
                   </Typography>
                   <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
                     <Typography variant="h4" sx={{ color: '#fff', fontWeight: '500' }}>
-                      {(analysisResult?.confidence * 100).toFixed(1)}%
+                      {analysisResult?.confidence.toFixed(1)}%
                     </Typography>
                     <Box sx={{ 
                       display: 'flex', 
                       alignItems: 'center', 
-                      bgcolor: analysisResult && analysisResult.confidence > 0.7 ? 'rgba(105, 240, 174, 0.1)' : 
-                               analysisResult && analysisResult.confidence > 0.4 ? 'rgba(255, 152, 0, 0.1)' : 
+                      bgcolor: analysisResult && analysisResult.confidence > 70 ? 'rgba(105, 240, 174, 0.1)' : 
+                               analysisResult && analysisResult.confidence > 50 ? 'rgba(255, 152, 0, 0.1)' : 
                                'rgba(255, 82, 82, 0.1)',
                       p: 1,
                       borderRadius: 1
                     }}>
-                      {analysisResult && analysisResult.confidence > 0.7 ? (
+                      {analysisResult && analysisResult.confidence > 70 ? (
                         <CheckCircleIcon sx={{ color: '#69f0ae' }} />
-                      ) : analysisResult && analysisResult.confidence > 0.4 ? (
+                      ) : analysisResult && analysisResult.confidence > 50 ? (
                         <InfoIcon sx={{ color: '#ff9800' }} />
                       ) : (
                         <ErrorIcon sx={{ color: '#ff5252' }} />

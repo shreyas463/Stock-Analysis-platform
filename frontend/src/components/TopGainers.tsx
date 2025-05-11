@@ -6,6 +6,7 @@ import TrendingUpIcon from '@mui/icons-material/TrendingUp';
 import ArrowUpwardIcon from '@mui/icons-material/ArrowUpward';
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5001';
+console.log('Using API base URL:', API_BASE_URL);
 
 interface GainerStock {
   symbol: string;
@@ -35,39 +36,57 @@ const TopGainers: React.FC<TopGainersProps> = ({ maxItems = 5 }) => {
       setLoading(true);
       try {
         console.log('Fetching top gainers data...');
-        const response = await fetch(`${API_BASE_URL}/api/market/top-gainers`, {
-          cache: 'no-store',
+        // Use the full URL with API_BASE_URL
+        const url = `${API_BASE_URL}/api/market/top-gainers`;
+        console.log('Fetching from URL:', url);
+        
+        const response = await fetch(url, {
+          method: 'GET',
           headers: {
+            'Content-Type': 'application/json',
             'Cache-Control': 'no-cache',
             'Pragma': 'no-cache'
-          }
+          },
+          // Add these options to help with CORS
+          mode: 'cors',
+          credentials: 'same-origin',
         });
         
         if (!response.ok) {
-          throw new Error(`API error: ${response.status}`);
+          const errorText = await response.text();
+          console.error('API response not OK:', response.status, errorText);
+          throw new Error(`Failed to fetch top gainers: ${response.status} ${errorText}`);
         }
         
         const data = await response.json();
-        console.log('Received data:', data);
+        console.log('Received top gainers data:', data);
         
         if (data && Array.isArray(data) && data.length > 0) {
-          console.log('Updating gainers with new data');
-          setGainers(data);
+          console.log('Updating gainers with new data:', data);
+          // Force the component to re-render with new data
+          setGainers([...data]);
         } else {
           console.log('No gainers data from API, using fallback data');
+          setGainers(fallbackGainers);
         }
       } catch (error) {
         console.error('Error fetching top gainers:', error);
+        // Always use fallback data on error
+        setGainers(fallbackGainers);
       } finally {
         setLoading(false);
       }
     };
 
-    // Initial fetch
+    // Initial fetch immediately
     fetchGainers();
     
-    // Set up polling every 5 seconds for more frequent updates
-    const intervalId = setInterval(fetchGainers, 5000);
+    // Set up polling every 10 seconds for more frequent updates
+    const intervalId = setInterval(() => {
+      console.log('Polling for updated top gainers data...');
+      fetchGainers();
+    }, 10000);
+    
     console.log('Set up polling interval for top gainers');
     
     return () => {

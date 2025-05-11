@@ -48,20 +48,30 @@ const CryptoPriceWidget: React.FC = () => {
     const fetchCryptoPrices = async () => {
       try {
         setLoading(true);
+        setError(null); // Clear any previous errors
         
-        // Use our API endpoint
-        const response = await fetch('/api/crypto-prices', {
+        // Use our API endpoint with the full backend URL
+        const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5001';
+        console.log('Fetching crypto prices from:', `${apiUrl}/api/crypto-prices`);
+        
+        const response = await fetch(`${apiUrl}/api/crypto-prices`, {
           method: 'GET',
           headers: {
             'Content-Type': 'application/json',
           },
+          // Add these options to help with CORS
+          mode: 'cors',
+          credentials: 'same-origin',
         });
         
         if (!response.ok) {
-          throw new Error('Failed to fetch crypto prices');
+          const errorText = await response.text();
+          console.error('API response not OK:', response.status, errorText);
+          throw new Error(`Failed to fetch crypto prices: ${response.status} ${errorText}`);
         }
         
         const data = await response.json();
+        console.log('Crypto data received:', data);
         setCryptoData(data);
         setLoading(false);
         

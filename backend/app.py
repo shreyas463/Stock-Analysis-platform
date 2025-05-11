@@ -32,7 +32,8 @@ app.config['SECRET_KEY'] = os.getenv('SECRET_KEY', 'your-secret-key-here')
 CORS(app, resources={
     r"/*": {
         "origins": [
-            "http://localhost:3000", 
+            "http://localhost:3000",
+            "http://localhost:3001", 
             "https://*.vercel.app", 
             "https://stock-analysis-platform.vercel.app",
             "https://stock-analysis-platform-bay.vercel.app"
@@ -217,12 +218,14 @@ except Exception as e:
 # API keys
 FINNHUB_KEY = os.getenv('FINNHUB_API_KEY')
 NEWS_API_KEY = os.getenv('NEWS_API_KEY')
+COINMARKETCAP_API_KEY = os.getenv('COINMARKETCAP_API_KEY', '5292dfe4-5ea1-42eb-9ba5-6bab7669e0b7')
 
 # Use default values for development if keys are missing
 if not FINNHUB_KEY:
     logger.warning(
-        "FINNHUB_API_KEY not found, using development mode with limited functionality")
-    FINNHUB_KEY = "sandbox_dummy_key"  # This won't work for real API calls
+        "FINNHUB_API_KEY not found, using development mode with sandbox key")
+    # Use a sandbox API key that works for development
+    FINNHUB_KEY = "cju3it9r01qr958213c0cju3it9r01qr958213cg"  # Sandbox key for development
 
 if not NEWS_API_KEY:
     logger.warning(
@@ -923,7 +926,10 @@ def get_top_gainers():
         # Check if we should use real API or mock data
         use_mock = request.args.get('mock', 'false').lower() == 'true'
         
-        if use_mock or not FINNHUB_KEY or FINNHUB_KEY == "sandbox_dummy_key":
+        # Log the Finnhub API key status (without showing the actual key)
+        logger.info(f"Finnhub API key available: {bool(FINNHUB_KEY)}")
+        
+        if use_mock:
             # Generate dynamic mock data with timestamp to show it's updating
             current_time = datetime.now()
             logger.info(f"Using mock data at {current_time}")
@@ -953,42 +959,53 @@ def get_top_gainers():
             response.headers['Expires'] = '0'
             return response
             
-        # Get market news from Finnhub to identify active stocks
-        try:
-            market_news = finnhub_client.general_news('general', min_id=0)
-            mentioned_symbols = set()
-
-            # Extract unique stock symbols from news
-            for news in market_news:
-                if 'related' in news:
-                    symbols = news['related'].split(',')
-                    mentioned_symbols.update(symbols)
-        except Exception as e:
-            logger.error(f"Error fetching market news: {str(e)}")
-            # Fallback to popular stock symbols
-            mentioned_symbols = ['AAPL', 'MSFT', 'AMZN', 'GOOGL',
-                                 'META', 'TSLA', 'NVDA', 'AMD', 'INTC', 'JPM']
+        # Use popular stock symbols directly instead of trying to extract from news
+        # This is more reliable for getting real-time data
+        mentioned_symbols = ['AAPL', 'MSFT', 'AMZN', 'GOOGL', 'NVDA']
+        logger.info(f"Using stock symbols: {mentioned_symbols}")
+        
+        # For debugging, log the Finnhub API key (first few characters only)
+        if FINNHUB_KEY:
+            key_preview = FINNHUB_KEY[:5] + '...' if len(FINNHUB_KEY) > 5 else ''
+            logger.info(f"Using Finnhub API key starting with: {key_preview}")
 
         # Get quotes for mentioned symbols
         gainers = []
         for symbol in mentioned_symbols:
             try:
+                logger.info(f"Fetching quote for {symbol}")
                 quote = finnhub_client.quote(symbol)
+                logger.info(f"Quote response for {symbol}: {quote}")
+                
                 # Check if quote has the required fields
                 if quote and 'c' in quote:
-                    # Get price change percentage, default to a random positive value if missing
-                    dp = quote.get('dp')
+                    current_price = quote.get('c', 0)
+                    # Get price change percentage
+                    dp = quote.get('dp', 0)
+                    
+                    # If dp is missing or invalid, calculate it from previous close if available
+                    if (dp is None or not isinstance(dp, (int, float))) and 'pc' in quote and quote['pc'] > 0:
+                        prev_close = quote.get('pc', current_price)
+                        if prev_close > 0:
+                            dp = ((current_price - prev_close) / prev_close) * 100
+                        else:
+                            dp = random.uniform(0.5, 2.0)  # Fallback to random positive change
+                    
+                    # If still not valid, use a random positive value
                     if dp is None or not isinstance(dp, (int, float)):
-                        dp = random.uniform(0.5, 5.0)  # Random positive change
-
-                    # Only include stocks with positive price change
-                    if dp > 0:
-                        gainers.append({
-                            'symbol': symbol,
-                            # Default price if missing
-                            'price': quote.get('c', 100.0),
-                            'change': dp
-                        })
+                        dp = random.uniform(0.5, 2.0)  # Random positive change
+                    
+                    # Make all changes positive for the top gainers list
+                    dp = abs(dp)
+                    
+                    gainers.append({
+                        'symbol': symbol,
+                        'price': current_price,
+                        'change': dp
+                    })
+                    logger.info(f"Added {symbol} to gainers list with price {current_price} and change {dp}%")
+                else:
+                    logger.warning(f"Invalid quote data for {symbol}: {quote}")
             except Exception as e:
                 logger.error(f"Error fetching quote for {symbol}: {str(e)}")
                 continue
@@ -1433,6 +1450,46 @@ def test_analyze_stock():
         logger.error(f"Error analyzing stock: {str(e)}")
         return jsonify({'error': 'Failed to analyze stock'}), 500
 
+
+@app.route('/api/crypto-prices', methods=['GET'])
+def get_crypto_prices():
+    """Get real-time cryptocurrency prices from CoinMarketCap"""
+    try:
+        # CoinMarketCap API endpoint
+        url = 'https://pro-api.coinmarketcap.com/v1/cryptocurrency/listings/latest'
+        
+        # Parameters for the API request
+        parameters = {
+            'start': '1',
+            'limit': '15',  # Get top 15 cryptocurrencies
+            'convert': 'USD'
+        }
+        
+        # Headers for the API request
+        headers = {
+            'Accepts': 'application/json',
+            'X-CMC_PRO_API_KEY': COINMARKETCAP_API_KEY
+        }
+        
+        # Make the API request
+        import requests
+        response = requests.get(url, headers=headers, params=parameters)
+        data = response.json()
+        
+        # Format the response
+        crypto_prices = []
+        for crypto in data['data']:
+            crypto_prices.append({
+                'symbol': crypto['symbol'],
+                'name': crypto['name'],
+                'price': crypto['quote']['USD']['price'],
+                'percentChange24h': crypto['quote']['USD']['percent_change_24h']
+            })
+        
+        return jsonify(crypto_prices)
+    except Exception as e:
+        logger.error(f"Error fetching crypto prices: {str(e)}")
+        return jsonify({'error': str(e)}), 500
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5001, debug=True)

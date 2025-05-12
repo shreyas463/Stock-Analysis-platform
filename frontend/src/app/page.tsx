@@ -10,6 +10,7 @@ import TopGainers from '../components/TopGainers';
 import Discussion from '@/components/Discussion';
 import StockAnalysisLogo from '@/components/StockAnalysisLogo';
 import PortfolioPieChart from '@/components/PortfolioPieChart';
+import InvestingChart from '@/components/InvestingChart';
 import { useAuth } from '@/contexts/AuthContext';
 import { useRouter } from 'next/navigation';
 import { auth } from '@/firebase/firebase-setup';
@@ -22,6 +23,7 @@ import DashboardIcon from '@mui/icons-material/Dashboard';
 import ForumIcon from '@mui/icons-material/Forum';
 import ExitToAppIcon from '@mui/icons-material/ExitToApp';
 import PersonIcon from '@mui/icons-material/Person';
+import TrendingUpIcon from '@mui/icons-material/TrendingUp';
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5001';
 
@@ -31,7 +33,7 @@ export default function Home() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const { user, logout, isAuthenticated, isLoading } = useAuth();
-  const [activeTab, setActiveTab] = useState<'market' | 'discussion' | 'profile'>('market');
+  const [activeTab, setActiveTab] = useState<'market' | 'investing' | 'discussion' | 'profile'>('market');
   const router = useRouter();
   const searchInputRef = useRef<HTMLInputElement>(null);
   
@@ -312,6 +314,21 @@ export default function Home() {
               }}
             >
               MARKET
+            </Button>
+            
+            <Button 
+              variant="contained" 
+              sx={{ 
+                bgcolor: activeTab === 'investing' ? '#4caf50' : 'transparent',
+                color: '#fff',
+                mr: 1,
+                '&:hover': {
+                  bgcolor: activeTab === 'investing' ? '#4caf50' : 'rgba(255, 255, 255, 0.1)'
+                }
+              }}
+              onClick={() => setActiveTab('investing')}
+            >
+              INVESTING
             </Button>
             
             <Button 
@@ -657,6 +674,21 @@ export default function Home() {
             </Grid>
           )}
         </>
+      )}
+      
+      {activeTab === 'investing' && (
+        <Card sx={{ bgcolor: '#1E1E1E', borderRadius: 2 }}>
+          <CardContent>
+            <Typography variant="h6" sx={{ color: '#fff', mb: 2 }}>
+              Investing
+            </Typography>
+            <InvestingChart 
+              cashBalance={cashBalance} 
+              stocksValue={stocksValue} 
+              portfolio={portfolio} 
+            />
+          </CardContent>
+        </Card>
       )}
       
       {activeTab === 'discussion' && (

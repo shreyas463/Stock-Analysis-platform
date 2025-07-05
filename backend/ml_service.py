@@ -31,7 +31,7 @@ class StockAnalyzer:
         # Initialize Finnhub client
         self.finnhub_client = finnhub.Client(api_key=self.api_key)
 
-    def get_historical_data(self, symbol, days=60):
+    def get_historical_data(self, symbol, days=90):
         """
         Get historical stock data for a given symbol.
 

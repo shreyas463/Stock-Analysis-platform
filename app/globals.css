@@ -1,0 +1,315 @@
+@import "tailwindcss";
+
+/* ────────────────────────────────────────────────────────────────────
+   Basis design tokens
+   Semantic first: components never reference raw hex values.
+   ──────────────────────────────────────────────────────────────────── */
+
+:root {
+  /* light theme */
+  --bg: #f7f8fa;
+  --panel: #ffffff;
+  --panel-2: #f1f3f6;
+  --line: #e3e7ee;
+  --line-strong: #cdd4e0;
+  --ink: #171c26;
+  --ink-muted: #5b6472;
+  --ink-faint: #8b94a5;
+  --brand: #4c63d2;
+  --brand-strong: #3b4fb8;
+  --brand-soft: #e8ecfb;
+  --pos: #0e9f6e;
+  --pos-soft: #e2f5ed;
+  --neg: #dc4a5d;
+  --neg-soft: #fbe9ec;
+  --warn: #b7791f;
+  --warn-soft: #fdf3e0;
+  --focus: #4c63d2;
+
+  --chart-1: #4c63d2;
+  --chart-2: #0e9f6e;
+  --chart-3: #b7791f;
+  --chart-4: #8250c8;
+  --chart-5: #0f8a94;
+  --chart-6: #c65098;
+  --chart-7: #647087;
+  --chart-8: #a8543a;
+
+  --radius: 0.5rem;
+}
+
+.dark {
+  --bg: #0a0c11;
+  --panel: #10131a;
+  --panel-2: #171b25;
+  --line: #232937;
+  --line-strong: #333b4e;
+  --ink: #e7ebf3;
+  --ink-muted: #98a2b5;
+  --ink-faint: #6b7486;
+  --brand: #7c93ee;
+  --brand-strong: #97a9f2;
+  --brand-soft: #1d2440;
+  --pos: #3ecf8e;
+  --pos-soft: #12291f;
+  --neg: #f4657a;
+  --neg-soft: #331a20;
+  --warn: #e2b93b;
+  --warn-soft: #2e2712;
+  --focus: #7c93ee;
+
+  --chart-1: #7c93ee;
+  --chart-2: #3ecf8e;
+  --chart-3: #e2b93b;
+  --chart-4: #b18cf0;
+  --chart-5: #43c3d0;
+  --chart-6: #ef8fc2;
+  --chart-7: #8e9ab3;
+  --chart-8: #e08d6d;
+}
+
+@theme inline {
+  --color-bg: var(--bg);
+  --color-panel: var(--panel);
+  --color-panel-2: var(--panel-2);
+  --color-line: var(--line);
+  --color-line-strong: var(--line-strong);
+  --color-ink: var(--ink);
+  --color-ink-muted: var(--ink-muted);
+  --color-ink-faint: var(--ink-faint);
+  --color-brand: var(--brand);
+  --color-brand-strong: var(--brand-strong);
+  --color-brand-soft: var(--brand-soft);
+  --color-pos: var(--pos);
+  --color-pos-soft: var(--pos-soft);
+  --color-neg: var(--neg);
+  --color-neg-soft: var(--neg-soft);
+  --color-warn: var(--warn);
+  --color-warn-soft: var(--warn-soft);
+  --color-focus: var(--focus);
+  --color-chart-1: var(--chart-1);
+  --color-chart-2: var(--chart-2);
+  --color-chart-3: var(--chart-3);
+  --color-chart-4: var(--chart-4);
+  --color-chart-5: var(--chart-5);
+  --color-chart-6: var(--chart-6);
+  --color-chart-7: var(--chart-7);
+  --color-chart-8: var(--chart-8);
+
+  --font-sans: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
+  --font-mono: var(--font-jetbrains-mono), ui-monospace, "SF Mono", monospace;
+
+  --radius-sm: calc(var(--radius) - 0.25rem);
+  --radius-md: var(--radius);
+  --radius-lg: calc(var(--radius) + 0.25rem);
+}
+
+@layer base {
+  * {
+    border-color: var(--line);
+  }
+  html {
+    color-scheme: light;
+  }
+  html.dark {
+    color-scheme: dark;
+  }
+  body {
+    background: var(--bg);
+    color: var(--ink);
+    font-feature-settings: "cv02", "cv03", "cv04";
+    -webkit-font-smoothing: antialiased;
+  }
+  /* Financial figures always align */
+  .tnum {
+    font-variant-numeric: tabular-nums;
+  }
+  :focus-visible {
+    outline: 2px solid var(--focus);
+    outline-offset: 2px;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+    }
+  }
+}
+
+@layer utilities {
+  .scrollbar-thin {
+    scrollbar-width: thin;
+    scrollbar-color: var(--line-strong) transparent;
+  }
+}
+
+/* ── landing page effects ──────────────────────────────────────────── */
+
+@keyframes aurora-drift {
+  0% {
+    transform: translate3d(-8%, -4%, 0) scale(1);
+  }
+  50% {
+    transform: translate3d(8%, 6%, 0) scale(1.15);
+  }
+  100% {
+    transform: translate3d(-8%, -4%, 0) scale(1);
+  }
+}
+
+@keyframes aurora-drift-2 {
+  0% {
+    transform: translate3d(6%, 4%, 0) scale(1.1);
+  }
+  50% {
+    transform: translate3d(-10%, -6%, 0) scale(0.95);
+  }
+  100% {
+    transform: translate3d(6%, 4%, 0) scale(1.1);
+  }
+}
+
+@keyframes float-y {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-10px);
+  }
+}
+
+@keyframes marquee-x {
+  from {
+    transform: translateX(0);
+  }
+  to {
+    transform: translateX(-50%);
+  }
+}
+
+@keyframes draw-line {
+  from {
+    stroke-dashoffset: 1000;
+  }
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+
+@keyframes pulse-soft {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.55;
+  }
+}
+
+.aurora-blob {
+  position: absolute;
+  border-radius: 9999px;
+  filter: blur(90px);
+  opacity: 0.35;
+  pointer-events: none;
+  animation: aurora-drift 18s ease-in-out infinite;
+}
+
+.aurora-blob-2 {
+  animation: aurora-drift-2 22s ease-in-out infinite;
+}
+
+.float-slow {
+  animation: float-y 7s ease-in-out infinite;
+}
+
+.float-slower {
+  animation: float-y 9s ease-in-out infinite;
+  animation-delay: 1.2s;
+}
+
+.marquee-track {
+  animation: marquee-x 40s linear infinite;
+}
+
+.marquee-track:hover {
+  animation-play-state: paused;
+}
+
+.draw-path {
+  stroke-dasharray: 1000;
+  stroke-dashoffset: 1000;
+  animation: draw-line 2.4s ease-out forwards;
+}
+
+.pulse-soft {
+  animation: pulse-soft 2.4s ease-in-out infinite;
+}
+
+/* scroll-reveal (driven by components/landing/reveal.tsx) */
+.reveal {
+  opacity: 0;
+  transform: translateY(18px);
+  transition:
+    opacity 0.7s cubic-bezier(0.16, 1, 0.3, 1),
+    transform 0.7s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.reveal.reveal-visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+/* gradient-ring cards */
+.glow-card {
+  position: relative;
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-lg);
+  transition:
+    transform 0.35s cubic-bezier(0.16, 1, 0.3, 1),
+    border-color 0.35s ease,
+    box-shadow 0.35s ease;
+}
+
+.glow-card:hover {
+  transform: translateY(-4px);
+  border-color: color-mix(in oklab, var(--brand) 45%, var(--line));
+  box-shadow:
+    0 12px 40px -12px color-mix(in oklab, var(--brand) 25%, transparent),
+    0 2px 8px rgb(0 0 0 / 0.08);
+}
+
+.hero-grid-bg {
+  background-image:
+    linear-gradient(
+      to right,
+      color-mix(in oklab, var(--line) 55%, transparent) 1px,
+      transparent 1px
+    ),
+    linear-gradient(
+      to bottom,
+      color-mix(in oklab, var(--line) 55%, transparent) 1px,
+      transparent 1px
+    );
+  background-size: 44px 44px;
+  mask-image: radial-gradient(ellipse 90% 70% at 50% 0%, black 30%, transparent 75%);
+}
+
+.text-gradient-brand {
+  background: linear-gradient(100deg, var(--brand) 0%, var(--chart-5) 55%, var(--pos) 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .reveal {
+    opacity: 1;
+    transform: none;
+  }
+}

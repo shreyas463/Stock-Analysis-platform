@@ -122,18 +122,83 @@ lives in **[ARCHITECTURE.md](ARCHITECTURE.md)**.
 
 ---
 
+## ⭐ Forecast Lab — how the forecasting actually works
+
+The original app's "AI advisor" added `random.uniform(-5, 5)` to its confidence scores and hardcoded
+"good buy" when data was missing. The Forecast Lab is the honest replacement, built on one idea:
+**never show a forecast unless it provably beats a naive guess in out-of-sample testing.**
+
+### The models it runs
+
+| Kind           | Models                                                                                                                              |
+| -------------- | ----------------------------------------------------------------------------------------------------------------------------------- |
+| **Candidates** | **AR(p)** on log-returns (an ARIMA(p, 1, 0) equivalent; order chosen by AIC) and **damped Holt** exponential smoothing (grid-tuned) |
+| **Baselines**  | **Naive** (tomorrow = today's close) · **random walk with drift** · **20-day moving average**                                       |
+
+Everything is computed in plain TypeScript (`lib/services/forecast.ts`) on log prices — no Python,
+no ML library, fully deterministic and unit-tested.
+
+### What "walk-forward validated" means
+
+You can't judge a time-series model by testing it on data it trained on — that leaks the future and
+makes any model look brilliant. **Walk-forward validation** slides a cutoff ("origin") forward through
+history; at each origin the model is refit on **only the data before it**, forecasts _h_ days ahead,
+and is scored against what **actually** happened. Averaging that error over ~40 origins simulates
+using the model in real time, again and again — an honest estimate of real-world accuracy.
+
+```
+time ─────────────────────────────────────────────────────────▶
+
+origin 1   [■■■■■■■ train ■■■■■■■]┊ forecast h days → compare to actual
+origin 2   [■■■■■■■■ train ■■■■■■■■]┊ forecast h days → compare to actual
+origin 3   [■■■■■■■■■ train ■■■■■■■■■]┊ forecast h days → compare to actual
+   ⋮                        ⋮                     ⋮
+origin 40  [■■■■■■■■■■■■ train ■■■■■■■■■■■■]┊ forecast → compare
+                                   │
+                    the model only ever sees data to the LEFT of ┊
+                    (no look-ahead) — errors are averaged as MAPE + MAE
+```
+
+### The pipeline
+
+```mermaid
+flowchart LR
+    H["Daily close history"] --> WF["Walk-forward validation<br/>~40 sliding origins"]
+    WF --> C["Candidates<br/>AR(p) · damped Holt"]
+    WF --> B["Baselines<br/>naive · drift · SMA-20"]
+    C --> S{"Best candidate beats<br/>best baseline?"}
+    B --> S
+    S -->|"yes"| M["Show model forecast<br/>+ empirical error band"]
+    S -->|"no"| N["Say so — show the baseline<br/>as a volatility range, not a prediction"]
+```
+
+### The honesty rules
+
+- **Beat-the-baseline gate** — a real model is surfaced _only_ if it beats the best baseline by a
+  meaningful margin (relative MAPE). If nothing beats "just guess today's price," Basis says so.
+- **Real error bands** — the shaded prediction interval is the **empirical 10th–90th percentile of
+  the model's own out-of-sample errors**, not an invented confidence score.
+- **No look-ahead** — hyper-parameters are tuned on a slice _before_ the validation window, so even
+  model selection is out-of-sample.
+- **Stated limits** — every forecast lists what it ignores (earnings, news, intraday moves) and that
+  past error does not bound future error. Full methodology in [ARCHITECTURE.md](ARCHITECTURE.md#forecast-lab-methodology).
+
+---
+
 ## ⚒ Tech stack
 
-| Layer             | Choices                                                                                                    |
-| ----------------- | ---------------------------------------------------------------------------------------------------------- |
-| **Framework**     | Next.js 15 (App Router, RSC) · React 19 · TypeScript (`strict` + `noUncheckedIndexedAccess`)               |
-| **UI**            | Tailwind CSS 4 · Radix UI primitives · custom design tokens (dark + light) · Lucide icons · `cmdk` palette |
-| **Data & charts** | TanStack Query · `lightweight-charts` (price) · Recharts (analytics) · React Hook Form + Zod               |
-| **Backend**       | Next.js Route Handlers · session auth (scrypt + httpOnly cookies) · Zod validation                         |
-| **Database**      | SQLite via `better-sqlite3` · Drizzle ORM + migrations · integer-cents money model                         |
-| **Market data**   | Provider abstraction → Finnhub (live) · Stooq (EOD candles) · deterministic synthetic (demo)               |
-| **Quality**       | Vitest (unit) · Playwright (e2e) · ESLint (`no-explicit-any` errors) · Prettier · GitHub Actions CI        |
-| **Deploy**        | Docker · Render / Railway / Fly.io                                                                         |
+| Layer             | Exactly what's used                                                                                                       |
+| ----------------- | ------------------------------------------------------------------------------------------------------------------------- |
+| **Framework**     | `next@15` (App Router + React Server Components) · `react@19` · `typescript` (`strict` + `noUncheckedIndexedAccess`)      |
+| **UI**            | `tailwindcss@4` · Radix UI primitives · custom design tokens (full dark + light) · `lucide-react` icons · `cmdk` (⌘K)     |
+| **State & forms** | `@tanstack/react-query` (server cache) · `react-hook-form` + `zod` (validation) · `next-themes` · `sonner` (toasts)       |
+| **Charts**        | `lightweight-charts` (candlestick / price) · `recharts` (portfolio & analytics)                                           |
+| **Backend**       | Next.js Route Handlers · session auth — `scrypt` password hashing + httpOnly cookies (no external auth SDK) · `zod` I/O   |
+| **Database**      | SQLite via `better-sqlite3` · `drizzle-orm` + `drizzle-kit` migrations · money as **integer cents**, quantities as **E4** |
+| **Forecasting**   | Hand-written AR(p) / damped-Holt + naive baselines in TypeScript — walk-forward validated, no Python / ML dependency      |
+| **Market data**   | One provider interface → Finnhub (live quotes/news/fundamentals) · Stooq (EOD candles) · deterministic synthetic (demo)   |
+| **Quality**       | `vitest` (30 unit tests) · `playwright` (e2e) · ESLint (`no-explicit-any` = error) · Prettier · GitHub Actions CI         |
+| **Deploy**        | `Dockerfile` · Render (`render.yaml`) / Railway (`railway.json`) / Fly.io                                                 |
 
 ---
 

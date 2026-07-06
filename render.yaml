@@ -1,0 +1,24 @@
+# Render Blueprint — https://render.com/docs/blueprint-spec
+# Deploy: New → Blueprint → connect this repo. Render builds the Dockerfile,
+# generates a SESSION_SECRET, and health-checks /api/health.
+#
+# NOTE: the free plan has NO persistent disk, so the SQLite database resets on
+# each redeploy — fine for a public demo (the demo account is re-seeded on
+# boot). For durable data, switch `plan` to `starter` and uncomment the `disk`
+# block below.
+services:
+  - type: web
+    name: basis
+    runtime: docker
+    plan: free
+    healthCheckPath: /api/health
+    autoDeploy: true
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: SESSION_SECRET
+        generateValue: true # generated once, then persisted by Render
+    # disk:
+    #   name: basis-data
+    #   mountPath: /app/data
+    #   sizeGB: 1

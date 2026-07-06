@@ -91,15 +91,17 @@ npm run db:seed      # seed the demo account (idempotent)
 
 ## Deployment
 
-Any Node 22 host with a persistent disk (Fly.io, Railway, Render, a VPS):
+Deploy the included `Dockerfile` to any container host with a persistent disk —
+**[DEPLOYMENT.md](DEPLOYMENT.md)** has one-click steps for Railway, Render and Fly.io. In short:
 
 ```bash
 docker build -t basis .
 docker run -p 3000:3000 -v basis-data:/app/data -e SESSION_SECRET=<hex> basis
 ```
 
-Vercel's serverless filesystem is ephemeral, so SQLite state won't persist there — use a
-container host, or contribute the Postgres driver swap (Drizzle makes it a small change).
+Serverless platforms (Vercel/Netlify) can't run Basis — their filesystems are ephemeral, so the
+on-disk SQLite database, sessions and trades wouldn't persist. Use a container host, or contribute
+a libSQL/Postgres driver swap (Drizzle makes the schema portable).
 
 ## Architecture, security, contributing
 

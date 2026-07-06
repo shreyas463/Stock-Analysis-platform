@@ -1,5 +1,15 @@
 # Deploying Basis
 
+**Fastest free path — one click:**
+
+[![Deploy to Render](https://render.com/images/deploy-to-render-button.svg)](https://render.com/deploy?repo=https://github.com/shreyas463/Stock-Analysis-platform)
+
+Click it → sign in with GitHub → **Apply**. Render reads `render.yaml`, builds the Dockerfile, and
+generates `SESSION_SECRET` for you. You get a `*.onrender.com` URL in a few minutes. (Free plan:
+sleeps when idle, data resets on redeploy — the demo account re-seeds automatically.)
+
+---
+
 Basis is one self-contained Node process backed by an on-disk SQLite database.
 That makes it a poor fit for serverless platforms (Vercel/Netlify), whose
 filesystems are ephemeral and read-only — the database, sessions and trades

@@ -91,8 +91,14 @@ npm run db:seed      # seed the demo account (idempotent)
 
 ## Deployment
 
-Deploy the included `Dockerfile` to any container host with a persistent disk —
-**[DEPLOYMENT.md](DEPLOYMENT.md)** has one-click steps for Railway, Render and Fly.io. In short:
+**One-click free deploy** (Render reads `render.yaml`, builds the Dockerfile, and generates the
+session secret automatically):
+
+[![Deploy to Render](https://render.com/images/deploy-to-render-button.svg)](https://render.com/deploy?repo=https://github.com/shreyas463/Stock-Analysis-platform)
+
+The free plan sleeps after ~15 min idle and has no persistent disk, so the database resets on
+redeploy — fine for a public demo, since the demo account re-seeds on boot. For durable data, see
+the disk / Railway / Fly options in **[DEPLOYMENT.md](DEPLOYMENT.md)**. In short:
 
 ```bash
 docker build -t basis .
